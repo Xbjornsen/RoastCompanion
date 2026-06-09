@@ -44,8 +44,8 @@ android {
         jvmTarget = "17"
     }
 
-    room {
-        schemaDirectory("$projectDir/schemas")
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
     }
 }
 
