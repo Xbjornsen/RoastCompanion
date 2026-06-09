@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RoastCompanion</string>
+
+    <!-- Roast screen -->
+    <string name="start_roast">Start Roast</string>
+    <string name="stop_roast">Stop Roast</string>
+    <string name="start_cooling">Start Cooling</string>
+    <string name="add_note">Add Note</string>
+    <string name="timer_default">00:00</string>
+    <string name="phase_idle">IDLE</string>
+    <string name="phase_listening">LISTENING</string>
+    <string name="phase_first_crack">FIRST CRACK</string>
+    <string name="phase_first_crack_done">FC COMPLETE</string>
+    <string name="phase_second_crack">SECOND CRACK</string>
+    <string name="phase_cooling">COOLING</string>
+
+    <!-- Crack cards -->
+    <string name="first_crack">First Crack</string>
+    <string name="second_crack">Second Crack</string>
+    <string name="fc_start">FC Start</string>
+    <string name="fc_end">FC End</string>
+    <string name="fc_duration">Duration</string>
+    <string name="sc_detected">SC Detected</string>
+    <string name="not_detected">—</string>
+
+    <!-- Carryover -->
+    <string name="carryover_title">Carryover Cooling</string>
+    <string name="carryover_still_cooking">Still developing…</string>
+    <string name="carryover_done">Cooling complete</string>
+    <string name="carryover_label">Estimated roast color</string>
+    <string name="carryover_dismiss">Done</string>
+
+    <!-- Alerts -->
+    <string name="alert_fc_detected">First crack detected!</string>
+    <string name="alert_fc_complete">First crack complete</string>
+    <string name="alert_sc_detected">⚠ Second crack — start cooling?</string>
+    <string name="action_start_cooling">Start Cooling</string>
+
+    <!-- Permissions -->
+    <string name="perm_mic_rationale">RoastCompanion uses the microphone to detect first and second crack sounds during roasting.</string>
+    <string name="perm_allow">Allow</string>
+    <string name="perm_cancel">Cancel</string>
+    <string name="perm_denied_snackbar">Microphone permission required. Grant it in Settings.</string>
+    <string name="perm_open_settings">Open Settings</string>
+
+    <!-- Log screen -->
+    <string name="roast_history">Roast History</string>
+    <string name="no_sessions">No roasts yet.\nStart your first roast!</string>
+    <string name="session_deleted">Session deleted</string>
+    <string name="undo">Undo</string>
+
+    <!-- Detail screen -->
+    <string name="session_detail">Session Detail</string>
+    <string name="total_duration">Total Duration</string>
+    <string name="roast_start">Roast Start</string>
+    <string name="cooling_start">Cooling Start</string>
+    <string name="notes">Notes</string>
+    <string name="edit_notes">Edit Notes</string>
+    <string name="save">Save</string>
+
+    <!-- Settings screen -->
+    <string name="settings">Settings</string>
+    <string name="threshold_multiplier">Detection Sensitivity</string>
+    <string name="threshold_multiplier_desc">Spike must exceed N × ambient noise floor</string>
+    <string name="fc_quiet_period">FC Quiet Period</string>
+    <string name="fc_quiet_period_desc">Seconds of silence after FC activity before FC is marked complete</string>
+    <string name="carryover_duration">Carryover Duration</string>
+    <string name="carryover_duration_desc">Estimated seconds of continued roast development during cooling</string>
+    <string name="min_transients_fc">Min Transients (FC)</string>
+    <string name="min_transients_fc_desc">Transients required in 3s window to confirm first crack</string>
+    <string name="min_transients_sc">Min Transients (SC)</string>
+    <string name="min_transients_sc_desc">Transients required in 3s window to confirm second crack</string>
+    <string name="alarm_sound_enabled">Alarm Sound</string>
+    <string name="alarm_sound_desc">Play alarm when second crack is detected</string>
+    <string name="vibration_enabled">Vibration</string>
+    <string name="vibration_desc">Vibrate on crack detection events</string>
+    <string name="reset_defaults">Reset to Defaults</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_monitor">Roast Monitor</string>
+    <string name="notif_channel_alarm">Crack Alarm</string>
+    <string name="notif_monitoring">Monitoring for cracks…</string>
+    <string name="notif_fc_active">First crack detected!</string>
+    <string name="notif_sc_active">Second crack — check your roast!</string>
+    <string name="notif_cooling">Cooling in progress</string>
+
+    <!-- Notes dialog -->
+    <string name="notes_hint">Session notes…</string>
+</resources>

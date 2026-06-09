@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/carryover_title"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        android:layout_marginBottom="24dp" />
+
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/progress_carryover"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
+        app:indicatorSize="160dp"
+        app:trackThickness="12dp"
+        app:indicatorColor="?attr/colorPrimary"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tv_carryover_timer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0:45"
+        android:textSize="36sp"
+        android:fontFamily="monospace"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tv_carryover_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/carryover_still_cooking"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:id="@+id/tv_carryover_color_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceLabelLarge"
+        android:textColor="?attr/colorPrimary"
+        android:layout_marginBottom="32dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_carryover_done"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/carryover_dismiss"
+        style="@style/Widget.Material3.Button" />
+
+</LinearLayout>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.RoastCompanion" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brown_700</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/brown_100</item>
+        <item name="colorOnPrimaryContainer">@color/brown_900</item>
+        <item name="colorSecondary">@color/amber_600</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondaryContainer">@color/amber_100</item>
+        <item name="colorTertiary">@color/deep_orange_400</item>
+        <item name="colorOnTertiary">@color/white</item>
+        <item name="colorTertiaryContainer">@color/deep_orange_100</item>
+        <item name="android:statusBarColor">@color/brown_800</item>
+    </style>
+</resources>

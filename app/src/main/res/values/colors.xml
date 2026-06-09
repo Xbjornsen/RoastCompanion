@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material 3 seed: deep coffee brown -->
+    <color name="brown_900">#3E2723</color>
+    <color name="brown_800">#4E342E</color>
+    <color name="brown_700">#5D4037</color>
+    <color name="brown_600">#6D4C41</color>
+    <color name="brown_400">#8D6E63</color>
+    <color name="brown_100">#D7CCC8</color>
+    <color name="brown_50">#EFEBE9</color>
+
+    <!-- Accent: amber for first crack -->
+    <color name="amber_700">#F57F17</color>
+    <color name="amber_600">#FB8C00</color>
+    <color name="amber_400">#FFCA28</color>
+    <color name="amber_100">#FFF8E1</color>
+
+    <!-- Alarm: deep orange / red for second crack -->
+    <color name="deep_orange_700">#E64A19</color>
+    <color name="deep_orange_400">#FF7043</color>
+    <color name="deep_orange_100">#FBE9E7</color>
+
+    <!-- Green for "done" states -->
+    <color name="green_700">#388E3C</color>
+    <color name="green_100">#E8F5E9</color>
+
+    <!-- Neutrals -->
+    <color name="white">#FFFFFF</color>
+    <color name="surface_variant">#F5F0EE</color>
+</resources>

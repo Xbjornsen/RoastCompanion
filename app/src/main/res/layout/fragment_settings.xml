@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/screen_padding">
+
+        <!-- Threshold -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/threshold_multiplier" android:textAppearance="?attr/textAppearanceTitleSmall" android:layout_marginTop="8dp" />
+        <TextView android:id="@+id/tv_threshold_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="?attr/colorPrimary" android:textAppearance="?attr/textAppearanceLabelMedium" />
+        <com.google.android.material.slider.Slider android:id="@+id/slider_threshold"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:valueFrom="1.5" android:valueTo="10.0" android:stepSize="0.5" android:layout_marginBottom="8dp" />
+
+        <!-- FC quiet period -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/fc_quiet_period" android:textAppearance="?attr/textAppearanceTitleSmall" android:layout_marginTop="8dp" />
+        <TextView android:id="@+id/tv_fc_quiet_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="?attr/colorPrimary" android:textAppearance="?attr/textAppearanceLabelMedium" />
+        <com.google.android.material.slider.Slider android:id="@+id/slider_fc_quiet"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:valueFrom="3" android:valueTo="30" android:stepSize="1" android:layout_marginBottom="8dp" />
+
+        <!-- Carryover duration -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/carryover_duration" android:textAppearance="?attr/textAppearanceTitleSmall" android:layout_marginTop="8dp" />
+        <TextView android:id="@+id/tv_carryover_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="?attr/colorPrimary" android:textAppearance="?attr/textAppearanceLabelMedium" />
+        <com.google.android.material.slider.Slider android:id="@+id/slider_carryover"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:valueFrom="15" android:valueTo="120" android:stepSize="5" android:layout_marginBottom="8dp" />
+
+        <!-- Min transients FC -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/min_transients_fc" android:textAppearance="?attr/textAppearanceTitleSmall" android:layout_marginTop="8dp" />
+        <TextView android:id="@+id/tv_min_fc_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="?attr/colorPrimary" android:textAppearance="?attr/textAppearanceLabelMedium" />
+        <com.google.android.material.slider.Slider android:id="@+id/slider_min_fc"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:valueFrom="1" android:valueTo="10" android:stepSize="1" android:layout_marginBottom="8dp" />
+
+        <!-- Min transients SC -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/min_transients_sc" android:textAppearance="?attr/textAppearanceTitleSmall" android:layout_marginTop="8dp" />
+        <TextView android:id="@+id/tv_min_sc_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="?attr/colorPrimary" android:textAppearance="?attr/textAppearanceLabelMedium" />
+        <com.google.android.material.slider.Slider android:id="@+id/slider_min_sc"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:valueFrom="1" android:valueTo="5" android:stepSize="1" android:layout_marginBottom="8dp" />
+
+        <!-- Switches -->
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_alarm_sound"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/alarm_sound_enabled"
+            android:layout_marginTop="12dp" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_vibration"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/vibration_enabled"
+            android:layout_marginTop="8dp" />
+
+        <!-- Reset -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_reset_defaults"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/reset_defaults"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="80dp"
+            style="@style/Widget.Material3.Button.OutlinedButton" />
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>
