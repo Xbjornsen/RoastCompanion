@@ -3,7 +3,10 @@ package com.roastcompanion.ui.roast
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.graphics.Color
+import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
+import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -242,12 +245,19 @@ class RoastFragment : Fragment() {
 
     private fun playAlarm() {
         alarmPlayer?.release()
-        // Requires res/raw/alarm_sound.wav — place a WAV file there before building
-        try {
-            alarmPlayer = MediaPlayer.create(requireContext(), R.raw.alarm_sound)
-            alarmPlayer?.start()
-        } catch (_: Exception) {
-            // No alarm file placed yet — fail silently
+        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        alarmPlayer = MediaPlayer().apply {
+            setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            setDataSource(requireContext(), alarmUri)
+            isLooping = false
+            prepare()
+            start()
         }
     }
 
