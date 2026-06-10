@@ -4,128 +4,208 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface">
+    android:background="@color/lab_background"
+    android:fitsSystemWindows="true"
+    android:clipToPadding="false"
+    android:paddingBottom="80dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/screen_padding">
+        android:paddingHorizontal="@dimen/screen_padding"
+        android:paddingTop="24dp">
 
-        <!-- Timer + phase header card -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_timer"
+        <!-- ── Header: brand + crumb ─────────────────────────────────── -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="@dimen/card_corner_radius"
-            app:cardElevation="@dimen/card_elevation">
+            android:orientation="vertical"
+            android:layout_marginBottom="20dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RoastCompanion"
+                android:textColor="@color/lab_text"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:letterSpacing="-0.02" />
+
+            <TextView
+                android:id="@+id/tv_crumb"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ROAST · IDLE"
+                android:textColor="@color/lab_text_dim"
+                android:textSize="10sp"
+                android:letterSpacing="0.15"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- ── Timer + phase pill ────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingVertical="12dp"
+            android:layout_marginBottom="16dp">
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:id="@+id/phase_pill"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:paddingVertical="24dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_phase_pill"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:layout_marginBottom="14dp">
 
-                <TextView
-                    android:id="@+id/tv_timer"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/timer_default"
-                    android:textSize="@dimen/timer_text_size"
-                    android:fontFamily="monospace"
-                    android:textColor="?attr/colorOnSurface" />
+                <View
+                    android:id="@+id/phase_dot"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:background="@drawable/bg_amber_dot" />
 
                 <TextView
                     android:id="@+id/tv_phase"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
                     android:text="@string/phase_idle"
-                    android:textSize="@dimen/phase_text_size"
-                    android:letterSpacing="0.12"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
-
+                    android:textColor="@color/lab_amber"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.18"
+                    android:layout_marginStart="8dp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <!-- RMS level meter -->
-        <com.google.android.material.card.MaterialCardView
+            <TextView
+                android:id="@+id/tv_timer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/timer_default"
+                android:textSize="@dimen/timer_text_size"
+                android:textColor="@color/lab_text"
+                android:fontFamily="monospace"
+                android:letterSpacing="-0.04" />
+
+            <TextView
+                android:id="@+id/tv_timer_sub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Elapsed"
+                android:textColor="@color/lab_text_dim"
+                android:textSize="11sp"
+                android:letterSpacing="0.1"
+                android:layout_marginTop="6dp" />
+        </LinearLayout>
+
+        <!-- ── Mic level card ────────────────────────────────────────── -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="@dimen/card_corner_radius"
-            app:cardElevation="@dimen/card_elevation">
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_surface"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="10dp"
+            android:layout_marginBottom="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
 
                 <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="MIC LEVEL"
+                    android:textColor="@color/lab_text_dim"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.18" />
+
+                <TextView
+                    android:id="@+id/tv_mic_value"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Mic Level"
-                    android:textAppearance="?attr/textAppearanceLabelSmall"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginBottom="8dp" />
-
-                <com.github.mikephil.charting.charts.BarChart
-                    android:id="@+id/chart_level"
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/level_meter_height" />
-
+                    android:text="—"
+                    android:textColor="@color/lab_amber"
+                    android:textSize="12sp"
+                    android:fontFamily="monospace" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <!-- First crack card -->
-        <com.google.android.material.card.MaterialCardView
+            <com.github.mikephil.charting.charts.LineChart
+                android:id="@+id/chart_level"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/level_meter_height" />
+        </LinearLayout>
+
+        <!-- ── First Crack event card ────────────────────────────────── -->
+        <LinearLayout
             android:id="@+id/card_first_crack"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="@dimen/card_corner_radius"
-            app:cardElevation="@dimen/card_elevation">
+            android:orientation="horizontal"
+            android:background="@drawable/bg_card_surface"
+            android:padding="14dp"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="10dp">
+
+            <View
+                android:id="@+id/fc_stripe"
+                android:layout_width="3dp"
+                android:layout_height="44dp"
+                android:background="@color/lab_border_strong"
+                android:layout_marginEnd="14dp" />
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_weight="1"
+                android:orientation="vertical">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/first_crack"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+                    android:textColor="@color/lab_text"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:layout_marginTop="8dp">
+                    android:layout_marginTop="6dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:orientation="vertical">
-
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/fc_start"
-                            android:textAppearance="?attr/textAppearanceLabelSmall"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
+                            android:textColor="@color/lab_text_muted"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.15" />
                         <TextView
                             android:id="@+id/tv_fc_start"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/not_detected"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
+                            android:textColor="@color/lab_text"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:layout_marginTop="2dp" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -133,20 +213,23 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:orientation="vertical">
-
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/fc_end"
-                            android:textAppearance="?attr/textAppearanceLabelSmall"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
+                            android:textColor="@color/lab_text_muted"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.15" />
                         <TextView
                             android:id="@+id/tv_fc_end"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/not_detected"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
+                            android:textColor="@color/lab_text"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:layout_marginTop="2dp" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -154,103 +237,110 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:orientation="vertical">
-
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/fc_duration"
-                            android:textAppearance="?attr/textAppearanceLabelSmall"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
+                            android:textColor="@color/lab_text_muted"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.15" />
                         <TextView
                             android:id="@+id/tv_fc_duration"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/not_detected"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
+                            android:textColor="@color/lab_text"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:layout_marginTop="2dp" />
                     </LinearLayout>
-
                 </LinearLayout>
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-        <!-- Second crack card -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- ── Second Crack event card ───────────────────────────────── -->
+        <LinearLayout
             android:id="@+id/card_second_crack"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="@dimen/card_corner_radius"
-            app:cardElevation="@dimen/card_elevation">
+            android:orientation="horizontal"
+            android:background="@drawable/bg_card_surface"
+            android:padding="14dp"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="20dp">
+
+            <View
+                android:id="@+id/sc_stripe"
+                android:layout_width="3dp"
+                android:layout_height="44dp"
+                android:background="@color/lab_border_strong"
+                android:layout_marginEnd="14dp" />
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_weight="1"
+                android:orientation="vertical">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/second_crack"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+                    android:textColor="@color/lab_text"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginTop="8dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
+                    android:orientation="vertical"
+                    android:layout_marginTop="6dp">
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/sc_detected"
-                            android:textAppearance="?attr/textAppearanceLabelSmall"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
-                        <TextView
-                            android:id="@+id/tv_sc_detected"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/not_detected"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
-                    </LinearLayout>
-
+                        android:text="@string/sc_detected"
+                        android:textColor="@color/lab_text_muted"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.15" />
+                    <TextView
+                        android:id="@+id/tv_sc_detected"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/not_detected"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace"
+                        android:layout_marginTop="2dp" />
                 </LinearLayout>
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Action buttons -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="80dp">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_start_stop"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/start_roast"
-                android:layout_marginBottom="8dp"
-                style="@style/Widget.Material3.Button" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_start_cooling"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/start_cooling"
-                android:enabled="false"
-                android:layout_marginBottom="8dp"
-                style="@style/Widget.Material3.Button.TonalButton" />
-
         </LinearLayout>
+
+        <!-- ── Action buttons ────────────────────────────────────────── -->
+        <Button
+            android:id="@+id/btn_start_stop"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/start_roast"
+            android:textColor="@color/lab_background"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:background="@drawable/bg_btn_primary"
+            android:stateListAnimator="@null"
+            android:layout_marginBottom="10dp" />
+
+        <Button
+            android:id="@+id/btn_start_cooling"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="@string/start_cooling"
+            android:textColor="@color/lab_text_muted"
+            android:textSize="14sp"
+            android:background="@drawable/bg_btn_ghost"
+            android:stateListAnimator="@null"
+            android:enabled="false" />
 
     </LinearLayout>
 

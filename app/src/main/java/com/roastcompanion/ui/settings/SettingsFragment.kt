@@ -9,6 +9,8 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
+import com.roastcompanion.R
 import com.roastcompanion.databinding.FragmentSettingsBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -33,11 +35,15 @@ class SettingsFragment : Fragment() {
 
         binding.sliderThreshold.addOnChangeListener { _, value, fromUser ->
             if (fromUser && !updatingFromVm) viewModel.setThresholdMultiplier(value)
-            binding.tvThresholdValue.text = "%.1f×".format(value)
+            binding.tvThresholdValue.text = "×%.1f".format(value)
         }
         binding.sliderFcQuiet.addOnChangeListener { _, value, fromUser ->
             if (fromUser && !updatingFromVm) viewModel.setFcQuietPeriodS(value.toInt())
             binding.tvFcQuietValue.text = "${value.toInt()}s"
+        }
+        binding.sliderMinFcTime.addOnChangeListener { _, value, fromUser ->
+            if (fromUser && !updatingFromVm) viewModel.setMinFcTimeMin(value.toInt())
+            binding.tvMinFcTimeValue.text = "${value.toInt()} min"
         }
         binding.sliderCarryover.addOnChangeListener { _, value, fromUser ->
             if (fromUser && !updatingFromVm) viewModel.setCarryoverDurationS(value.toInt())
@@ -45,11 +51,11 @@ class SettingsFragment : Fragment() {
         }
         binding.sliderMinFc.addOnChangeListener { _, value, fromUser ->
             if (fromUser && !updatingFromVm) viewModel.setMinTransientsFc(value.toInt())
-            binding.tvMinFcValue.text = "${value.toInt()} transients"
+            binding.tvMinFcValue.text = "${value.toInt()}"
         }
         binding.sliderMinSc.addOnChangeListener { _, value, fromUser ->
             if (fromUser && !updatingFromVm) viewModel.setMinTransientsSc(value.toInt())
-            binding.tvMinScValue.text = "${value.toInt()} transients"
+            binding.tvMinScValue.text = "${value.toInt()}"
         }
         binding.switchAlarmSound.setOnCheckedChangeListener { _, checked ->
             if (!updatingFromVm) viewModel.setAlarmSoundEnabled(checked)
@@ -60,6 +66,9 @@ class SettingsFragment : Fragment() {
         binding.btnResetDefaults.setOnClickListener {
             viewModel.resetDefaults()
         }
+        binding.btnGuide.setOnClickListener {
+            findNavController().navigate(R.id.guideFragment)
+        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -67,7 +76,7 @@ class SettingsFragment : Fragment() {
                     viewModel.thresholdMultiplier.collect { v ->
                         updatingFromVm = true
                         binding.sliderThreshold.value = v
-                        binding.tvThresholdValue.text = "%.1f×".format(v)
+                        binding.tvThresholdValue.text = "×%.1f".format(v)
                         updatingFromVm = false
                     }
                 }
@@ -76,6 +85,14 @@ class SettingsFragment : Fragment() {
                         updatingFromVm = true
                         binding.sliderFcQuiet.value = v.toFloat()
                         binding.tvFcQuietValue.text = "${v}s"
+                        updatingFromVm = false
+                    }
+                }
+                launch {
+                    viewModel.minFcTimeMin.collect { v ->
+                        updatingFromVm = true
+                        binding.sliderMinFcTime.value = v.toFloat()
+                        binding.tvMinFcTimeValue.text = "$v min"
                         updatingFromVm = false
                     }
                 }
@@ -91,7 +108,7 @@ class SettingsFragment : Fragment() {
                     viewModel.minTransientsFc.collect { v ->
                         updatingFromVm = true
                         binding.sliderMinFc.value = v.toFloat()
-                        binding.tvMinFcValue.text = "$v transients"
+                        binding.tvMinFcValue.text = "$v"
                         updatingFromVm = false
                     }
                 }
@@ -99,7 +116,7 @@ class SettingsFragment : Fragment() {
                     viewModel.minTransientsSc.collect { v ->
                         updatingFromVm = true
                         binding.sliderMinSc.value = v.toFloat()
-                        binding.tvMinScValue.text = "$v transients"
+                        binding.tvMinScValue.text = "$v"
                         updatingFromVm = false
                     }
                 }

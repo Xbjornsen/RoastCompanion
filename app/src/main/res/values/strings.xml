@@ -18,11 +18,17 @@
     <!-- Crack cards -->
     <string name="first_crack">First Crack</string>
     <string name="second_crack">Second Crack</string>
-    <string name="fc_start">FC Start</string>
-    <string name="fc_end">FC End</string>
-    <string name="fc_duration">Duration</string>
-    <string name="sc_detected">SC Detected</string>
+    <string name="fc_start">START</string>
+    <string name="fc_end">END</string>
+    <string name="fc_duration">DURATION</string>
+    <string name="sc_detected">DETECTED</string>
     <string name="not_detected">—</string>
+    <string name="awaiting">Awaiting</string>
+
+    <!-- Headers -->
+    <string name="header_listening">Listening</string>
+    <string name="header_events">Events</string>
+    <string name="header_recent">Recent</string>
 
     <!-- Carryover -->
     <string name="carryover_title">Carryover Cooling</string>
@@ -44,11 +50,19 @@
     <string name="perm_denied_snackbar">Microphone permission required. Grant it in Settings.</string>
     <string name="perm_open_settings">Open Settings</string>
 
-    <!-- Log screen -->
-    <string name="roast_history">Roast History</string>
+    <!-- History screen -->
+    <string name="roast_history">History</string>
     <string name="no_sessions">No roasts yet.\nStart your first roast!</string>
     <string name="session_deleted">Session deleted</string>
     <string name="undo">Undo</string>
+    <string name="history_swipe_hint">← Swipe a session left to delete</string>
+    <string name="history_stat_month">THIS MONTH</string>
+    <string name="history_stat_avg_fc">AVG FC</string>
+    <string name="history_stat_total">TOTAL ROASTS</string>
+    <string name="search_hint">Search sessions, beans, notes…</string>
+    <string name="filter_all">All</string>
+    <string name="filter_week">This Week</string>
+    <string name="filter_fc">FC Only</string>
 
     <!-- Detail screen -->
     <string name="session_detail">Session Detail</string>
@@ -59,23 +73,51 @@
     <string name="edit_notes">Edit Notes</string>
     <string name="save">Save</string>
 
-    <!-- Settings screen -->
+    <!-- Settings screen — plain English -->
     <string name="settings">Settings</string>
-    <string name="threshold_multiplier">Detection Sensitivity</string>
-    <string name="threshold_multiplier_desc">Spike must exceed N × ambient noise floor</string>
-    <string name="fc_quiet_period">FC Quiet Period</string>
-    <string name="fc_quiet_period_desc">Seconds of silence after FC activity before FC is marked complete</string>
-    <string name="carryover_duration">Carryover Duration</string>
-    <string name="carryover_duration_desc">Estimated seconds of continued roast development during cooling</string>
-    <string name="min_transients_fc">Min Transients (FC)</string>
-    <string name="min_transients_fc_desc">Transients required in 3s window to confirm first crack</string>
-    <string name="min_transients_sc">Min Transients (SC)</string>
-    <string name="min_transients_sc_desc">Transients required in 3s window to confirm second crack</string>
-    <string name="alarm_sound_enabled">Alarm Sound</string>
-    <string name="alarm_sound_desc">Play alarm when second crack is detected</string>
-    <string name="vibration_enabled">Vibration</string>
-    <string name="vibration_desc">Vibrate on crack detection events</string>
-    <string name="reset_defaults">Reset to Defaults</string>
+    <string name="settings_subtitle">v1.0.0</string>
+    <string name="settings_device_name">Gene Cafe CBR-101</string>
+
+    <string name="section_listening">Listening</string>
+    <string name="section_cooling">Cooling</string>
+    <string name="section_alerts">Alerts</string>
+    <string name="section_data">Your Data</string>
+
+    <string name="threshold_multiplier">Crack Sensitivity</string>
+    <string name="threshold_multiplier_desc">Higher = only louder sounds count as a crack. Lower if your roaster is quiet, raise if you get false positives.</string>
+
+    <string name="min_fc_time">Earliest First Crack</string>
+    <string name="min_fc_time_desc">Cracks are ignored before this point in the roast — the CBR-101 never reaches first crack this early.</string>
+
+    <string name="fc_quiet_period">First Crack Timeout</string>
+    <string name="fc_quiet_period_desc">How long the app waits in silence before deciding first crack has finished.</string>
+
+    <string name="carryover_duration">Cooling Carryover</string>
+    <string name="carryover_duration_desc">How long the bean keeps roasting after the CBR-101 starts its cool cycle.</string>
+
+    <string name="min_transients_fc">First Crack — Cracks Before Trigger</string>
+    <string name="min_transients_fc_desc">How many cracks the app needs to hear in 3 seconds before confirming first crack.</string>
+
+    <string name="min_transients_sc">Second Crack — Cracks Before Trigger</string>
+    <string name="min_transients_sc_desc">How many cracks in 3 seconds before confirming second crack.</string>
+
+    <string name="alarm_sound_enabled">Sound Alarm</string>
+    <string name="alarm_sound_desc">Play phone\'s alarm tone at second crack</string>
+
+    <string name="vibration_enabled">Vibrate</string>
+    <string name="vibration_desc">Buzz when a crack is detected</string>
+
+    <string name="keep_screen_on">Keep Screen Awake</string>
+    <string name="keep_screen_on_desc">Stay on during active roast</string>
+
+    <string name="export_data">Export Roast History</string>
+    <string name="export_data_desc">Save all sessions as a spreadsheet</string>
+
+    <string name="reset_defaults">Reset Settings</string>
+    <string name="reset_defaults_desc">Put everything back to defaults</string>
+
+    <string name="delete_all_history">Delete All History</string>
+    <string name="delete_all_history_desc">Cannot be undone</string>
 
     <!-- Notifications -->
     <string name="notif_channel_monitor">Roast Monitor</string>

@@ -3,83 +3,693 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/lab_background"
+    android:fitsSystemWindows="true"
+    android:clipToPadding="false"
+    android:paddingBottom="88dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/screen_padding">
+        android:paddingHorizontal="@dimen/screen_padding"
+        android:paddingTop="24dp">
 
-        <!-- Threshold -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/threshold_multiplier" android:textAppearance="?attr/textAppearanceTitleSmall" android:layout_marginTop="8dp" />
-        <TextView android:id="@+id/tv_threshold_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textColor="?attr/colorPrimary" android:textAppearance="?attr/textAppearanceLabelMedium" />
-        <com.google.android.material.slider.Slider android:id="@+id/slider_threshold"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:valueFrom="1.5" android:valueTo="10.0" android:stepSize="0.5" android:layout_marginBottom="8dp" />
-
-        <!-- FC quiet period -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/fc_quiet_period" android:textAppearance="?attr/textAppearanceTitleSmall" android:layout_marginTop="8dp" />
-        <TextView android:id="@+id/tv_fc_quiet_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textColor="?attr/colorPrimary" android:textAppearance="?attr/textAppearanceLabelMedium" />
-        <com.google.android.material.slider.Slider android:id="@+id/slider_fc_quiet"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:valueFrom="3" android:valueTo="30" android:stepSize="1" android:layout_marginBottom="8dp" />
-
-        <!-- Carryover duration -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/carryover_duration" android:textAppearance="?attr/textAppearanceTitleSmall" android:layout_marginTop="8dp" />
-        <TextView android:id="@+id/tv_carryover_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textColor="?attr/colorPrimary" android:textAppearance="?attr/textAppearanceLabelMedium" />
-        <com.google.android.material.slider.Slider android:id="@+id/slider_carryover"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:valueFrom="15" android:valueTo="120" android:stepSize="5" android:layout_marginBottom="8dp" />
-
-        <!-- Min transients FC -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/min_transients_fc" android:textAppearance="?attr/textAppearanceTitleSmall" android:layout_marginTop="8dp" />
-        <TextView android:id="@+id/tv_min_fc_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textColor="?attr/colorPrimary" android:textAppearance="?attr/textAppearanceLabelMedium" />
-        <com.google.android.material.slider.Slider android:id="@+id/slider_min_fc"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:valueFrom="1" android:valueTo="10" android:stepSize="1" android:layout_marginBottom="8dp" />
-
-        <!-- Min transients SC -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/min_transients_sc" android:textAppearance="?attr/textAppearanceTitleSmall" android:layout_marginTop="8dp" />
-        <TextView android:id="@+id/tv_min_sc_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textColor="?attr/colorPrimary" android:textAppearance="?attr/textAppearanceLabelMedium" />
-        <com.google.android.material.slider.Slider android:id="@+id/slider_min_sc"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:valueFrom="1" android:valueTo="5" android:stepSize="1" android:layout_marginBottom="8dp" />
-
-        <!-- Switches -->
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/switch_alarm_sound"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/alarm_sound_enabled"
-            android:layout_marginTop="12dp" />
-
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/switch_vibration"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/vibration_enabled"
-            android:layout_marginTop="8dp" />
-
-        <!-- Reset -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_reset_defaults"
+        <!-- ── Header ────────────────────────────────────────────── -->
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/reset_defaults"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="80dp"
-            style="@style/Widget.Material3.Button.OutlinedButton" />
+            android:text="RoastCompanion"
+            android:textColor="@color/lab_text"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:letterSpacing="-0.02" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SETTINGS · V1.0.0"
+            android:textColor="@color/lab_text_dim"
+            android:textSize="10sp"
+            android:letterSpacing="0.15"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- ── Device profile card ───────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_card_surface"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:text="☕"
+                android:textSize="22sp"
+                android:gravity="center"
+                android:background="@drawable/bg_phase_pill" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_device_name"
+                    android:textColor="@color/lab_text"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_device_sub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Drum roaster · mic monitoring"
+                    android:textColor="@color/lab_text_muted"
+                    android:textSize="11sp"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ════════ GUIDE ════════ -->
+        <LinearLayout
+            android:id="@+id/btn_guide"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_card_surface"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="📖"
+                android:textSize="18sp"
+                android:gravity="center"
+                android:background="@drawable/bg_phase_pill" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Roasting 101"
+                    android:textColor="@color/lab_text"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Quick start, roast levels, and tips"
+                    android:textColor="@color/lab_text_muted"
+                    android:textSize="11sp"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_chevron_right"
+                android:contentDescription="@null" />
+        </LinearLayout>
+
+        <!-- ════════ LISTENING ════════ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/section_listening"
+            android:textColor="@color/lab_text_muted"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.18"
+            android:textAllCaps="true"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_surface"
+            android:paddingVertical="6dp"
+            android:layout_marginBottom="16dp">
+
+            <!-- Crack Sensitivity -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/threshold_multiplier"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_threshold_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/lab_amber"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:fontFamily="monospace"
+                        android:background="@drawable/bg_phase_pill"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/threshold_multiplier_desc"
+                    android:textColor="@color/lab_text_muted"
+                    android:textSize="11sp"
+                    android:lineSpacingExtra="2dp"
+                    android:layout_marginTop="4dp" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/slider_threshold"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="1.5"
+                    android:valueTo="10.0"
+                    android:stepSize="0.5"
+                    app:labelBehavior="gone"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/lab_border" />
+
+            <!-- Earliest First Crack (time gate) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/min_fc_time"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_min_fc_time_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/lab_amber"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:fontFamily="monospace"
+                        android:background="@drawable/bg_phase_pill"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/min_fc_time_desc"
+                    android:textColor="@color/lab_text_muted"
+                    android:textSize="11sp"
+                    android:lineSpacingExtra="2dp"
+                    android:layout_marginTop="4dp" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/slider_min_fc_time"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="0"
+                    android:valueTo="10"
+                    android:stepSize="1"
+                    app:labelBehavior="gone"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/lab_border" />
+
+            <!-- First Crack Timeout -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/fc_quiet_period"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_fc_quiet_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/lab_amber"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:fontFamily="monospace"
+                        android:background="@drawable/bg_phase_pill"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/fc_quiet_period_desc"
+                    android:textColor="@color/lab_text_muted"
+                    android:textSize="11sp"
+                    android:lineSpacingExtra="2dp"
+                    android:layout_marginTop="4dp" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/slider_fc_quiet"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="3"
+                    android:valueTo="30"
+                    android:stepSize="1"
+                    app:labelBehavior="gone"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/lab_border" />
+
+            <!-- FC cracks before trigger -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/min_transients_fc"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_min_fc_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/lab_amber"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:fontFamily="monospace"
+                        android:background="@drawable/bg_phase_pill"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/min_transients_fc_desc"
+                    android:textColor="@color/lab_text_muted"
+                    android:textSize="11sp"
+                    android:lineSpacingExtra="2dp"
+                    android:layout_marginTop="4dp" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/slider_min_fc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="1"
+                    android:valueTo="10"
+                    android:stepSize="1"
+                    app:labelBehavior="gone"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/lab_border" />
+
+            <!-- SC cracks before trigger -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/min_transients_sc"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_min_sc_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/lab_amber"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:fontFamily="monospace"
+                        android:background="@drawable/bg_phase_pill"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/min_transients_sc_desc"
+                    android:textColor="@color/lab_text_muted"
+                    android:textSize="11sp"
+                    android:lineSpacingExtra="2dp"
+                    android:layout_marginTop="4dp" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/slider_min_sc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="1"
+                    android:valueTo="5"
+                    android:stepSize="1"
+                    app:labelBehavior="gone"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ════════ COOLING ════════ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/section_cooling"
+            android:textColor="@color/lab_text_muted"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.18"
+            android:textAllCaps="true"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_surface"
+            android:paddingVertical="6dp"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/carryover_duration"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_carryover_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/lab_amber"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:fontFamily="monospace"
+                        android:background="@drawable/bg_phase_pill"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/carryover_duration_desc"
+                    android:textColor="@color/lab_text_muted"
+                    android:textSize="11sp"
+                    android:lineSpacingExtra="2dp"
+                    android:layout_marginTop="4dp" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/slider_carryover"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="15"
+                    android:valueTo="120"
+                    android:stepSize="5"
+                    app:labelBehavior="gone"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ════════ ALERTS ════════ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/section_alerts"
+            android:textColor="@color/lab_text_muted"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.18"
+            android:textAllCaps="true"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_surface"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/alarm_sound_enabled"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/alarm_sound_desc"
+                        android:textColor="@color/lab_text_muted"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_alarm_sound"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/lab_border" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/vibration_enabled"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/vibration_desc"
+                        android:textColor="@color/lab_text_muted"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_vibration"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ════════ YOUR DATA ════════ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/section_data"
+            android:textColor="@color/lab_text_muted"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.18"
+            android:textAllCaps="true"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_surface">
+
+            <LinearLayout
+                android:id="@+id/btn_reset_defaults"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="14dp"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/reset_defaults"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/reset_defaults_desc"
+                        android:textColor="@color/lab_text_muted"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:contentDescription="@null" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Footer -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ROASTCOMPANION · 1.0.0"
+            android:textColor="@color/lab_text_dim"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.15"
+            android:gravity="center"
+            android:paddingVertical="20dp" />
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

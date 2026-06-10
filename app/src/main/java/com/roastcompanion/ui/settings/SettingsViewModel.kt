@@ -36,6 +36,9 @@ class SettingsViewModel @Inject constructor(
     val vibrationEnabled: StateFlow<Boolean> = prefs.vibrationEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_VIBRATION_ENABLED)
 
+    val minFcTimeMin: StateFlow<Int> = prefs.minFcTimeMin
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_MIN_FC_TIME_MIN)
+
     fun setThresholdMultiplier(v: Float) { viewModelScope.launch { prefs.setThresholdMultiplier(v) } }
     fun setFcQuietPeriodS(v: Int)        { viewModelScope.launch { prefs.setFcQuietPeriodS(v) } }
     fun setCarryoverDurationS(v: Int)    { viewModelScope.launch { prefs.setCarryoverDurationS(v) } }
@@ -43,5 +46,6 @@ class SettingsViewModel @Inject constructor(
     fun setMinTransientsSc(v: Int)       { viewModelScope.launch { prefs.setMinTransientsSc(v) } }
     fun setAlarmSoundEnabled(v: Boolean) { viewModelScope.launch { prefs.setAlarmSoundEnabled(v) } }
     fun setVibrationEnabled(v: Boolean)  { viewModelScope.launch { prefs.setVibrationEnabled(v) } }
+    fun setMinFcTimeMin(v: Int)          { viewModelScope.launch { prefs.setMinFcTimeMin(v) } }
     fun resetDefaults()                  { viewModelScope.launch { prefs.resetDefaults() } }
 }

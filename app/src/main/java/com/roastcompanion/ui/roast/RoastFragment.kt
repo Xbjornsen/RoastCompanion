@@ -3,8 +3,8 @@ package com.roastcompanion.ui.roast
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.media.AudioAttributes
-import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.Build
@@ -24,9 +24,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
-import com.github.mikephil.charting.data.BarData
-import com.github.mikephil.charting.data.BarDataSet
-import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.roastcompanion.R
@@ -45,9 +45,7 @@ class RoastFragment : Fragment() {
     private val binding get() = _binding!!
     private val viewModel: RoastViewModel by viewModels()
 
-    // Rolling RMS history for the level meter (200 entries ≈ 10s at 20fps)
     private val rmsHistory = ArrayDeque<Float>(200)
-
     private var alarmPlayer: MediaPlayer? = null
 
     private val permissionLauncher = registerForActivityResult(
@@ -80,12 +78,19 @@ class RoastFragment : Fragment() {
             legend.isEnabled = false
             setDrawGridBackground(false)
             setDrawBorders(false)
-            axisLeft.isEnabled = false
-            axisRight.isEnabled = false
+            axisLeft.apply {
+                isEnabled = false
+                axisMinimum = 0f
+            }
+            axisRight.apply {
+                isEnabled = false
+                axisMinimum = 0f
+            }
             xAxis.isEnabled = false
             setScaleEnabled(false)
             setTouchEnabled(false)
-            setViewPortOffsets(0f, 0f, 0f, 0f)
+            setViewPortOffsets(0f, 4f, 0f, 0f)
+            setBackgroundColor(Color.TRANSPARENT)
         }
     }
 
@@ -99,6 +104,7 @@ class RoastFragment : Fragment() {
         }
 
         binding.btnStartCooling.setOnClickListener {
+            if (!it.isEnabled) return@setOnClickListener
             viewModel.onStartCooling(requireContext())
             findNavController().navigate(R.id.carryoverFragment)
         }
@@ -166,6 +172,7 @@ class RoastFragment : Fragment() {
     }
 
     private fun updatePhaseUi(phase: RoastPhase) {
+        val ctx = requireContext()
         binding.tvPhase.text = when (phase) {
             RoastPhase.IDLE                 -> getString(R.string.phase_idle)
             RoastPhase.MONITORING           -> getString(R.string.phase_listening)
@@ -174,32 +181,96 @@ class RoastFragment : Fragment() {
             RoastPhase.SECOND_CRACK_ACTIVE  -> getString(R.string.phase_second_crack)
             RoastPhase.COOLING              -> getString(R.string.phase_cooling)
         }
+        binding.tvCrumb.text = "ROAST · ${binding.tvPhase.text}"
+
+        // Phase pill colour reflects current phase
+        val pillColor = when (phase) {
+            RoastPhase.IDLE                 -> R.color.lab_text_dim
+            RoastPhase.SECOND_CRACK_ACTIVE  -> R.color.lab_red
+            RoastPhase.COOLING              -> R.color.lab_mint
+            else                            -> R.color.lab_amber
+        }
+        val tint = ContextCompat.getColor(ctx, pillColor)
+        binding.tvPhase.setTextColor(tint)
+        binding.phaseDot.backgroundTintList = android.content.res.ColorStateList.valueOf(tint)
+
+        // FC stripe lights up when FC is active or complete
+        binding.fcStripe.setBackgroundColor(
+            ContextCompat.getColor(
+                ctx,
+                if (phase == RoastPhase.FIRST_CRACK_ACTIVE ||
+                    phase == RoastPhase.FIRST_CRACK_COMPLETE ||
+                    phase == RoastPhase.SECOND_CRACK_ACTIVE ||
+                    phase == RoastPhase.COOLING
+                ) R.color.lab_amber
+                else R.color.lab_border_strong
+            )
+        )
+        // SC stripe lights up red when SC reached
+        binding.scStripe.setBackgroundColor(
+            ContextCompat.getColor(
+                ctx,
+                if (phase == RoastPhase.SECOND_CRACK_ACTIVE || phase == RoastPhase.COOLING)
+                    R.color.lab_red
+                else R.color.lab_border_strong
+            )
+        )
 
         val isActive = phase != RoastPhase.IDLE
-        binding.btnStartStop.text = if (isActive) getString(R.string.stop_roast) else getString(R.string.start_roast)
+        binding.btnStartStop.text =
+            if (isActive) getString(R.string.stop_roast) else getString(R.string.start_roast)
 
-        binding.btnStartCooling.isEnabled = phase == RoastPhase.FIRST_CRACK_COMPLETE ||
+        val coolEnabled = phase == RoastPhase.FIRST_CRACK_COMPLETE ||
                 phase == RoastPhase.SECOND_CRACK_ACTIVE
+        binding.btnStartCooling.isEnabled = coolEnabled
+        binding.btnStartCooling.alpha = if (coolEnabled) 1f else 0.5f
     }
 
     private fun updateLevelMeter(rms: Float) {
         if (rmsHistory.size >= 200) rmsHistory.removeFirst()
         rmsHistory.addLast(rms)
 
-        val entries = rmsHistory.mapIndexed { i, v -> BarEntry(i.toFloat(), v) }
-        val dataSet = BarDataSet(entries, "").apply {
-            color = ContextCompat.getColor(requireContext(), R.color.brown_400)
+        // Display a friendly approximate dBFS value
+        binding.tvMicValue.text = formatDb(rms)
+
+        val lineColor = ContextCompat.getColor(requireContext(), R.color.lab_amber)
+        val entries = rmsHistory.mapIndexed { i, v -> Entry(i.toFloat(), v) }
+
+        val fillDrawable = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                Color.argb(120,
+                    Color.red(lineColor), Color.green(lineColor), Color.blue(lineColor)),
+                Color.TRANSPARENT
+            )
+        )
+
+        val dataSet = LineDataSet(entries, "").apply {
+            color = lineColor
+            lineWidth = 1.5f
+            setDrawCircles(false)
             setDrawValues(false)
+            mode = LineDataSet.Mode.CUBIC_BEZIER
+            setDrawFilled(true)
+            this.fillDrawable = fillDrawable
         }
-        binding.chartLevel.data = BarData(dataSet).apply { barWidth = 1f }
+
+        binding.chartLevel.data = LineData(dataSet)
         binding.chartLevel.invalidate()
     }
 
+    private fun formatDb(rms: Float): String {
+        if (rms <= 1f) return "−∞ dB"
+        val db = 20.0 * kotlin.math.log10(rms.toDouble() / 32767.0)
+        return "%.0f dB".format(db)
+    }
+
     private fun handleAlert(alert: RoastAlert) {
+        val ctx = requireContext()
         when (alert) {
             is RoastAlert.FirstCrackDetected -> {
-                animateCardBackground(binding.cardFirstCrack,
-                    ContextCompat.getColor(requireContext(), R.color.amber_100))
+                animateStripeColor(binding.fcStripe,
+                    ContextCompat.getColor(ctx, R.color.lab_amber))
                 vibrate(longArrayOf(0, 200, 100, 200))
                 Snackbar.make(binding.root, R.string.alert_fc_detected, Snackbar.LENGTH_SHORT).show()
             }
@@ -207,27 +278,25 @@ class RoastFragment : Fragment() {
                 Snackbar.make(binding.root, R.string.alert_fc_complete, Snackbar.LENGTH_SHORT).show()
             }
             is RoastAlert.SecondCrackDetected -> {
-                animateCardBackground(binding.cardSecondCrack,
-                    ContextCompat.getColor(requireContext(), R.color.deep_orange_100))
+                animateStripeColor(binding.scStripe,
+                    ContextCompat.getColor(ctx, R.color.lab_red))
                 vibrate(longArrayOf(0, 500, 200, 500, 200, 500))
                 playAlarm()
                 Snackbar.make(binding.root, R.string.alert_sc_detected, Snackbar.LENGTH_INDEFINITE)
                     .setAction(R.string.action_start_cooling) {
-                        viewModel.onStartCooling(requireContext())
+                        viewModel.onStartCooling(ctx)
                         findNavController().navigate(R.id.carryoverFragment)
                     }.show()
             }
         }
     }
 
-    private fun animateCardBackground(card: View, toColor: Int) {
-        val fromColor = Color.WHITE
-        ValueAnimator.ofObject(ArgbEvaluator(), fromColor, toColor).apply {
-            duration = 600
-            addUpdateListener { animator ->
-                (card as? com.google.android.material.card.MaterialCardView)
-                    ?.setCardBackgroundColor(animator.animatedValue as Int)
-            }
+    private fun animateStripeColor(stripe: View, toColor: Int) {
+        val from = (stripe.background as? android.graphics.drawable.ColorDrawable)?.color
+            ?: Color.TRANSPARENT
+        ValueAnimator.ofObject(ArgbEvaluator(), from, toColor).apply {
+            duration = 450
+            addUpdateListener { stripe.setBackgroundColor(it.animatedValue as Int) }
             start()
         }
     }

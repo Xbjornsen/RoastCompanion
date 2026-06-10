@@ -18,13 +18,38 @@ class RoastSessionAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(session: RoastSession) {
+            binding.tvName.text = session.profileName.ifBlank { "Roast #${session.id}" }
             binding.tvDate.text = TimeFormatter.formatDate(session.startTimeMs)
-            binding.tvDuration.text = session.totalDurationMs
+
+            // FC tag — time from roast start to first crack
+            val fcStart = session.firstCrackStartMs
+            if (fcStart != null) {
+                binding.tagFc.text = "FC ${TimeFormatter.formatDuration(fcStart - session.startTimeMs)}"
+                binding.tagFc.visibility = View.VISIBLE
+            } else {
+                binding.tagFc.visibility = View.GONE
+            }
+
+            // SC tag
+            val sc = session.secondCrackDetectedMs
+            if (sc != null) {
+                binding.tagSc.text = "SC ${TimeFormatter.formatDuration(sc - session.startTimeMs)}"
+                binding.tagSc.visibility = View.VISIBLE
+            } else {
+                binding.tagSc.visibility = View.GONE
+            }
+
+            // Cooling carry tag
+            binding.tagCool.text = "CARRY"
+            binding.tagCool.visibility =
+                if (session.coolingStartedMs != null) View.VISIBLE else View.GONE
+
+            binding.tvTotal.text = session.totalDurationMs
                 ?.let { TimeFormatter.formatDuration(it) } ?: "—"
-            binding.tvFcTime.text = session.firstCrackStartMs
-                ?.let { "FC @ ${TimeFormatter.formatTimestamp(it)}" } ?: "No FC logged"
-            binding.tvScBadge.visibility =
-                if (session.secondCrackDetectedMs != null) View.VISIBLE else View.GONE
+            binding.tvFcDur.text = session.firstCrackDurationMs
+                ?.let { TimeFormatter.formatDuration(it) } ?: "—"
+            binding.tvProfile.text = session.profileName.ifBlank { "—" }
+
             binding.root.setOnClickListener { onClick(session) }
         }
     }

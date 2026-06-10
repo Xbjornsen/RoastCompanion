@@ -52,6 +52,9 @@ class RoastRepository @Inject constructor(
 
     suspend fun deleteSession(id: Long) = dao.deleteById(id)
 
+    /** Re-insert a previously deleted session with all its data intact (swipe undo). */
+    suspend fun restoreSession(session: RoastSession): Long = dao.insert(session)
+
     suspend fun updateNotes(id: Long, notes: String) {
         dao.getSessionById(id)?.let {
             dao.update(it.copy(notes = notes))

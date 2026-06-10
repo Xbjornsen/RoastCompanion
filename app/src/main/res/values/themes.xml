@@ -1,16 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.RoastCompanion" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/brown_700</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorPrimaryContainer">@color/brown_100</item>
-        <item name="colorOnPrimaryContainer">@color/brown_900</item>
-        <item name="colorSecondary">@color/amber_600</item>
-        <item name="colorOnSecondary">@color/white</item>
-        <item name="colorSecondaryContainer">@color/amber_100</item>
-        <item name="colorTertiary">@color/deep_orange_400</item>
-        <item name="colorOnTertiary">@color/white</item>
-        <item name="colorTertiaryContainer">@color/deep_orange_100</item>
-        <item name="android:statusBarColor">@color/brown_800</item>
+
+    <!-- Dark Coffee Lab — base theme used in both light and dark mode -->
+    <style name="Theme.RoastCompanion" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/lab_amber</item>
+        <item name="colorOnPrimary">@color/lab_background</item>
+        <item name="colorPrimaryContainer">@color/md_light_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/md_light_on_primary_container</item>
+
+        <item name="colorSecondary">@color/md_light_secondary</item>
+        <item name="colorOnSecondary">@color/md_light_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/lab_surface</item>
+        <item name="colorOnSecondaryContainer">@color/lab_text</item>
+
+        <item name="colorTertiary">@color/lab_red</item>
+        <item name="colorOnTertiary">@color/lab_text</item>
+        <item name="colorTertiaryContainer">@color/md_light_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/md_light_on_tertiary_container</item>
+
+        <item name="android:colorBackground">@color/lab_background</item>
+        <item name="colorSurface">@color/lab_surface</item>
+        <item name="colorSurfaceVariant">@color/lab_border</item>
+        <item name="colorOnSurface">@color/lab_text</item>
+        <item name="colorOnSurfaceVariant">@color/lab_text_muted</item>
+
+        <item name="android:statusBarColor">@color/lab_background</item>
+        <item name="android:navigationBarColor">@color/lab_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Slider track + thumb colours -->
+        <item name="sliderStyle">@style/Widget.RoastCompanion.Slider</item>
     </style>
+
+    <!-- Custom slider — amber track, hide ticks -->
+    <style name="Widget.RoastCompanion.Slider" parent="Widget.Material3.Slider">
+        <item name="trackColorActive">@color/lab_amber</item>
+        <item name="trackColorInactive">@color/lab_border</item>
+        <item name="thumbColor">@color/lab_amber</item>
+        <item name="haloColor">#33FF9544</item>
+        <item name="tickColor">@android:color/transparent</item>
+        <item name="tickVisible">false</item>
+        <item name="trackHeight">4dp</item>
+    </style>
+
+    <!-- Bottom nav active indicator — subtle amber-tinted surface -->
+    <style name="Widget.RoastCompanion.NavIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">#33FF9544</item>
+        <item name="android:width">56dp</item>
+        <item name="android:height">32dp</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Material3.Corner.Full</item>
+    </style>
+
 </resources>

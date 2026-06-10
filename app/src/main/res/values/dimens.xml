@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="card_corner_radius">12dp</dimen>
-    <dimen name="card_elevation">2dp</dimen>
-    <dimen name="screen_padding">16dp</dimen>
-    <dimen name="timer_text_size">52sp</dimen>
-    <dimen name="phase_text_size">13sp</dimen>
-    <dimen name="level_meter_height">72dp</dimen>
+    <dimen name="card_corner_radius">18dp</dimen>
+    <dimen name="card_corner_radius_lg">22dp</dimen>
+    <dimen name="card_elevation">0dp</dimen>
+    <dimen name="screen_padding">20dp</dimen>
+    <dimen name="timer_text_size">64sp</dimen>
+    <dimen name="phase_text_size">11sp</dimen>
+    <dimen name="level_meter_height">64dp</dimen>
 </resources>

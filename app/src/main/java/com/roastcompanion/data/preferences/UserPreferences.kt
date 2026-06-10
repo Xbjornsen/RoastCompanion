@@ -24,6 +24,7 @@ class UserPreferences @Inject constructor(
         val KEY_MIN_TRANSIENTS_SC    = intPreferencesKey("min_transients_sc")
         val KEY_ALARM_SOUND_ENABLED  = booleanPreferencesKey("alarm_sound_enabled")
         val KEY_VIBRATION_ENABLED    = booleanPreferencesKey("vibration_enabled")
+        val KEY_MIN_FC_TIME_MIN      = intPreferencesKey("min_fc_time_min")
 
         const val DEFAULT_THRESHOLD_MULTIPLIER = 3.5f
         const val DEFAULT_FC_QUIET_PERIOD_S    = 8
@@ -32,6 +33,7 @@ class UserPreferences @Inject constructor(
         const val DEFAULT_MIN_TRANSIENTS_SC    = 2
         const val DEFAULT_ALARM_SOUND_ENABLED  = true
         const val DEFAULT_VIBRATION_ENABLED    = true
+        const val DEFAULT_MIN_FC_TIME_MIN      = 4
     }
 
     val thresholdMultiplier: Flow<Float> = context.dataStore.data.map {
@@ -55,6 +57,9 @@ class UserPreferences @Inject constructor(
     val vibrationEnabled: Flow<Boolean> = context.dataStore.data.map {
         it[KEY_VIBRATION_ENABLED] ?: DEFAULT_VIBRATION_ENABLED
     }
+    val minFcTimeMin: Flow<Int> = context.dataStore.data.map {
+        it[KEY_MIN_FC_TIME_MIN] ?: DEFAULT_MIN_FC_TIME_MIN
+    }
 
     suspend fun setThresholdMultiplier(value: Float) {
         context.dataStore.edit { it[KEY_THRESHOLD_MULTIPLIER] = value }
@@ -77,6 +82,9 @@ class UserPreferences @Inject constructor(
     suspend fun setVibrationEnabled(value: Boolean) {
         context.dataStore.edit { it[KEY_VIBRATION_ENABLED] = value }
     }
+    suspend fun setMinFcTimeMin(value: Int) {
+        context.dataStore.edit { it[KEY_MIN_FC_TIME_MIN] = value }
+    }
     suspend fun resetDefaults() {
         context.dataStore.edit { prefs ->
             prefs[KEY_THRESHOLD_MULTIPLIER] = DEFAULT_THRESHOLD_MULTIPLIER
@@ -86,6 +94,7 @@ class UserPreferences @Inject constructor(
             prefs[KEY_MIN_TRANSIENTS_SC]    = DEFAULT_MIN_TRANSIENTS_SC
             prefs[KEY_ALARM_SOUND_ENABLED]  = DEFAULT_ALARM_SOUND_ENABLED
             prefs[KEY_VIBRATION_ENABLED]    = DEFAULT_VIBRATION_ENABLED
+            prefs[KEY_MIN_FC_TIME_MIN]      = DEFAULT_MIN_FC_TIME_MIN
         }
     }
 }

@@ -1,30 +1,96 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Material 3 seed: deep coffee brown -->
+
+    <!-- ════════════════════════════════════════════════════════════════
+         DARK COFFEE LAB PALETTE
+         Single palette used for both light and night-mode themes so the
+         app looks consistent regardless of the system setting.
+         ════════════════════════════════════════════════════════════════ -->
+
+    <!-- Core backgrounds — espresso depths -->
+    <color name="lab_background">#150D08</color>      <!-- App background -->
+    <color name="lab_surface">#241710</color>         <!-- Cards / panels -->
+    <color name="lab_surface_2">#1F140C</color>       <!-- Inset / pressed -->
+    <color name="lab_border">#382519</color>          <!-- Dividers / outlines -->
+    <color name="lab_border_strong">#4A3221</color>   <!-- Stronger borders -->
+
+    <!-- Text -->
+    <color name="lab_text">#FBF4E8</color>            <!-- Primary text -->
+    <color name="lab_text_muted">#A89178</color>      <!-- Secondary text / labels -->
+    <color name="lab_text_dim">#7A5B40</color>        <!-- Placeholders / disabled -->
+
+    <!-- Brand accents -->
+    <color name="lab_amber">#FF9544</color>           <!-- Primary accent — brand amber -->
+    <color name="lab_amber_dim">#C8541A</color>       <!-- Darker amber for gradient bottoms -->
+    <color name="lab_red">#E84A3A</color>             <!-- Second crack / danger -->
+    <color name="lab_red_strong">#B91C1C</color>      <!-- Delete actions -->
+    <color name="lab_mint">#58FFA9</color>            <!-- Cooling / success indicator -->
+
+    <!-- ═══════════════ Material3 light theme mapping ═══════════════ -->
+    <color name="md_light_primary">#FF9544</color>
+    <color name="md_light_on_primary">#150D08</color>
+    <color name="md_light_primary_container">#5A3000</color>
+    <color name="md_light_on_primary_container">#FFDDB3</color>
+
+    <color name="md_light_secondary">#FFCC80</color>
+    <color name="md_light_on_secondary">#3E2000</color>
+    <color name="md_light_secondary_container">#382519</color>
+    <color name="md_light_on_secondary_container">#FBF4E8</color>
+
+    <color name="md_light_tertiary">#E84A3A</color>
+    <color name="md_light_on_tertiary">#FBF4E8</color>
+    <color name="md_light_tertiary_container">#7A2800</color>
+    <color name="md_light_on_tertiary_container">#FFDBCF</color>
+
+    <color name="md_light_background">#150D08</color>
+    <color name="md_light_surface">#241710</color>
+    <color name="md_light_surface_variant">#382519</color>
+    <color name="md_light_on_surface">#FBF4E8</color>
+    <color name="md_light_on_surface_variant">#A89178</color>
+    <color name="md_light_status_bar">#150D08</color>
+
+    <!-- ═══════════════ Material3 dark theme mapping ═══════════════ -->
+    <color name="md_dark_primary">#FF9544</color>
+    <color name="md_dark_on_primary">#150D08</color>
+    <color name="md_dark_primary_container">#5A3000</color>
+    <color name="md_dark_on_primary_container">#FFDDB3</color>
+
+    <color name="md_dark_secondary">#FFCC80</color>
+    <color name="md_dark_on_secondary">#3E2000</color>
+    <color name="md_dark_secondary_container">#382519</color>
+    <color name="md_dark_on_secondary_container">#FBF4E8</color>
+
+    <color name="md_dark_tertiary">#E84A3A</color>
+    <color name="md_dark_on_tertiary">#FBF4E8</color>
+    <color name="md_dark_tertiary_container">#7A2800</color>
+    <color name="md_dark_on_tertiary_container">#FFDBCF</color>
+
+    <color name="md_dark_background">#150D08</color>
+    <color name="md_dark_surface">#241710</color>
+    <color name="md_dark_surface_variant">#382519</color>
+    <color name="md_dark_on_surface">#FBF4E8</color>
+    <color name="md_dark_on_surface_variant">#A89178</color>
+    <color name="md_dark_status_bar">#150D08</color>
+
+    <!-- Semantic alert colours -->
+    <color name="alert_fc_bg">#3A2010</color>
+    <color name="alert_sc_bg">#3A1810</color>
+    <color name="alert_fc_bg_dark">#3A2010</color>
+    <color name="alert_sc_bg_dark">#3A1810</color>
+
+    <!-- Chart -->
+    <color name="chart_bar_light">#FF9544</color>
+    <color name="chart_bar_dark">#FF9544</color>
+
+    <!-- Legacy aliases -->
     <color name="brown_900">#3E2723</color>
     <color name="brown_800">#4E342E</color>
     <color name="brown_700">#5D4037</color>
-    <color name="brown_600">#6D4C41</color>
     <color name="brown_400">#8D6E63</color>
     <color name="brown_100">#D7CCC8</color>
-    <color name="brown_50">#EFEBE9</color>
-
-    <!-- Accent: amber for first crack -->
-    <color name="amber_700">#F57F17</color>
-    <color name="amber_600">#FB8C00</color>
-    <color name="amber_400">#FFCA28</color>
-    <color name="amber_100">#FFF8E1</color>
-
-    <!-- Alarm: deep orange / red for second crack -->
-    <color name="deep_orange_700">#E64A19</color>
-    <color name="deep_orange_400">#FF7043</color>
+    <color name="deep_orange_700">#E84A3A</color>
     <color name="deep_orange_100">#FBE9E7</color>
-
-    <!-- Green for "done" states -->
-    <color name="green_700">#388E3C</color>
-    <color name="green_100">#E8F5E9</color>
-
-    <!-- Neutrals -->
+    <color name="amber_100">#FFF8E1</color>
     <color name="white">#FFFFFF</color>
-    <color name="surface_variant">#F5F0EE</color>
+
 </resources>

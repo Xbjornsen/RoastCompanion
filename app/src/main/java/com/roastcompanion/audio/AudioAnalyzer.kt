@@ -26,18 +26,29 @@ class AudioAnalyzer @Inject constructor(
         const val WINDOW_MS = 50
         val SAMPLES_PER_WINDOW = SAMPLE_RATE * WINDOW_MS / 1000  // 2205
 
-        // Rolling transient count window (3 seconds)
-        const val TRANSIENT_WINDOW_MS = 3_000L
+        // First crack is a rolling series of pops, not a burst — collect
+        // candidates over a wide window and require them to be spread out.
+        const val FC_WINDOW_MS = 15_000L
+        // First→last crack in the window must span at least this long.
+        // Rejects "3 mouth clicks in 2 seconds".
+        const val FC_MIN_SPAN_MS = 4_000L
+
+        // Second crack window (FC context already gates this phase)
+        const val SC_WINDOW_MS = 10_000L
     }
+
+    private val spectralGate = SpectralGate()
 
     // ---- Settings (updated from prefs before each session) ----
     @Volatile var thresholdMultiplier: Float = UserPreferences.DEFAULT_THRESHOLD_MULTIPLIER
     @Volatile var fcQuietPeriodMs: Long = UserPreferences.DEFAULT_FC_QUIET_PERIOD_S * 1000L
     @Volatile var minTransientsFc: Int = UserPreferences.DEFAULT_MIN_TRANSIENTS_FC
     @Volatile var minTransientsSc: Int = UserPreferences.DEFAULT_MIN_TRANSIENTS_SC
+    @Volatile var minFcTimeMs: Long = UserPreferences.DEFAULT_MIN_FC_TIME_MIN * 60_000L
 
     // ---- Internal state ----
     private var phase = RoastPhase.IDLE
+    private var sessionStartMs = 0L
     private var fcStartMs = 0L
     private var fcLastTransientMs = 0L
     private var transientWindowStartMs = 0L
@@ -61,13 +72,15 @@ class AudioAnalyzer @Inject constructor(
         fcQuietPeriodMs = prefs.fcQuietPeriodS.first() * 1000L
         minTransientsFc = prefs.minTransientsFc.first()
         minTransientsSc = prefs.minTransientsSc.first()
+        minFcTimeMs = prefs.minFcTimeMin.first() * 60_000L
     }
 
     fun startSession() {
         phase = RoastPhase.MONITORING
+        sessionStartMs = System.currentTimeMillis()
         fcStartMs = 0L
         fcLastTransientMs = 0L
-        transientWindowStartMs = System.currentTimeMillis()
+        transientWindowStartMs = sessionStartMs
         transientCountInWindow = 0
         detector.reset()
         _phaseFlow.value = phase
@@ -95,18 +108,21 @@ class AudioAnalyzer @Inject constructor(
 
         when (phase) {
             RoastPhase.MONITORING -> {
-                val isSpike = detector.isTransient(rms, thresholdMultiplier)
-                if (isSpike) {
-                    handleTransient(now, isFirstCrackPhase = true)
+                if (isCrackTransient(samples, count, rms)) {
+                    // Time gate: first crack physically cannot happen this
+                    // early in a CBR-101 roast. Ignore the spike entirely —
+                    // and don't let it inflate the ambient estimate either.
+                    if (now - sessionStartMs >= minFcTimeMs) {
+                        handleTransient(now, isFirstCrackPhase = true)
+                    }
                 } else {
                     detector.updateAmbient(rms)
-                    resetWindowIfExpired(now)
+                    resetWindowIfExpired(now, FC_WINDOW_MS)
                 }
             }
 
             RoastPhase.FIRST_CRACK_ACTIVE -> {
-                val isSpike = detector.isTransient(rms, thresholdMultiplier)
-                if (isSpike) {
+                if (isCrackTransient(samples, count, rms)) {
                     fcLastTransientMs = now
                     handleTransient(now, isFirstCrackPhase = true)
                 } else {
@@ -122,12 +138,11 @@ class AudioAnalyzer @Inject constructor(
             }
 
             RoastPhase.FIRST_CRACK_COMPLETE -> {
-                val isSpike = detector.isTransient(rms, thresholdMultiplier)
-                if (isSpike) {
+                if (isCrackTransient(samples, count, rms)) {
                     handleTransient(now, isFirstCrackPhase = false)
                 } else {
                     detector.updateAmbient(rms)
-                    resetWindowIfExpired(now)
+                    resetWindowIfExpired(now, SC_WINDOW_MS)
                 }
             }
 
@@ -137,9 +152,22 @@ class AudioAnalyzer @Inject constructor(
         }
     }
 
+    /**
+     * A frame counts as a crack only if it passes BOTH gates:
+     *  1. Amplitude — louder than ambient × multiplier (after warmup)
+     *  2. Spectrum — energy concentrated in the 2–9 kHz crack band,
+     *     which rejects voices, thuds, and low-frequency noise that
+     *     happen to be loud.
+     */
+    private fun isCrackTransient(samples: ShortArray, count: Int, rms: Float): Boolean {
+        if (!detector.isTransient(rms, thresholdMultiplier)) return false
+        return spectralGate.isCrackLike(samples, count)
+    }
+
     private fun handleTransient(now: Long, isFirstCrackPhase: Boolean) {
-        if (now - transientWindowStartMs > TRANSIENT_WINDOW_MS) {
-            // Window expired — start fresh
+        val windowMs = if (isFirstCrackPhase) FC_WINDOW_MS else SC_WINDOW_MS
+        if (now - transientWindowStartMs > windowMs) {
+            // Window expired — this transient starts a fresh window
             transientWindowStartMs = now
             transientCountInWindow = 0
         }
@@ -149,17 +177,24 @@ class AudioAnalyzer @Inject constructor(
         if (transientCountInWindow >= required) {
             when {
                 isFirstCrackPhase && phase == RoastPhase.MONITORING -> {
-                    fcStartMs = transientWindowStartMs
-                    fcLastTransientMs = now
-                    transitionTo(RoastPhase.FIRST_CRACK_ACTIVE)
-                    _eventFlow.tryEmit(CrackEvent.FirstCrackStarted)
+                    // Pattern requirement: cracks must be SPREAD over time.
+                    // A real first crack rolls for 30s+; a burst of clicks
+                    // in a couple of seconds doesn't qualify — keep waiting
+                    // for more evidence inside the window.
+                    if (now - transientWindowStartMs >= FC_MIN_SPAN_MS) {
+                        fcStartMs = transientWindowStartMs
+                        fcLastTransientMs = now
+                        transitionTo(RoastPhase.FIRST_CRACK_ACTIVE)
+                        _eventFlow.tryEmit(CrackEvent.FirstCrackStarted)
+                        resetTransientWindow(now)
+                    }
                 }
                 !isFirstCrackPhase && phase == RoastPhase.FIRST_CRACK_COMPLETE -> {
                     transitionTo(RoastPhase.SECOND_CRACK_ACTIVE)
                     _eventFlow.tryEmit(CrackEvent.SecondCrackStarted)
+                    resetTransientWindow(now)
                 }
             }
-            resetTransientWindow(now)
         }
     }
 
@@ -168,8 +203,8 @@ class AudioAnalyzer @Inject constructor(
         _phaseFlow.value = newPhase
     }
 
-    private fun resetWindowIfExpired(now: Long) {
-        if (now - transientWindowStartMs > TRANSIENT_WINDOW_MS) {
+    private fun resetWindowIfExpired(now: Long, windowMs: Long) {
+        if (now - transientWindowStartMs > windowMs) {
             resetTransientWindow(now)
         }
     }
