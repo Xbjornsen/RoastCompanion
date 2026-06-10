@@ -6,6 +6,19 @@ Built for personal use by an experienced home roaster — no onboarding, no fluf
 
 ---
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/screen_roast.png" width="200"/><br/><sub>Roast</sub></td>
+    <td align="center"><img src="docs/screenshots/screen_history.png" width="200"/><br/><sub>History</sub></td>
+    <td align="center"><img src="docs/screenshots/screen_settings.png" width="200"/><br/><sub>Settings</sub></td>
+    <td align="center"><img src="docs/screenshots/screen_session_detail.png" width="200"/><br/><sub>Session Detail</sub></td>
+  </tr>
+</table>
+
+---
+
 ## Features
 
 ### Roast Monitoring

@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -42,7 +43,13 @@ class SessionDetailFragment : Fragment() {
         binding.btnBack.setOnClickListener { findNavController().navigateUp() }
         binding.btnSaveNotes.setOnClickListener {
             viewModel.saveNotes(binding.etNotes.text.toString())
-            Snackbar.make(binding.root, "Notes saved", Snackbar.LENGTH_SHORT).show()
+            binding.etNotes.clearFocus()
+            val imm = requireContext().getSystemService(InputMethodManager::class.java)
+            imm?.hideSoftInputFromWindow(binding.root.windowToken, 0)
+            val snack = Snackbar.make(binding.root, "Notes saved", Snackbar.LENGTH_SHORT)
+            snack.setBackgroundTint(ContextCompat.getColor(requireContext(), R.color.lab_surface))
+            snack.setTextColor(ContextCompat.getColor(requireContext(), R.color.lab_text))
+            snack.show()
         }
         binding.btnFavorite.setOnClickListener { viewModel.toggleFavorite() }
         starViews().forEachIndexed { i, star ->
