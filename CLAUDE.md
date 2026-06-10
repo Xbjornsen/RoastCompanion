@@ -114,6 +114,9 @@ don't change it without asking.
 - PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** — it silently
   broke `keystore.properties` parsing once (first key became `﻿storeFile`,
   release APK came out unsigned). Write config files BOM-free.
+- Piping values into `gh secret set` from PowerShell appends a newline that
+  breaks `base64 -d` and keystore passwords in CI — always use
+  `gh secret set NAME -b $value` instead.
 - Room now uses a real `MIGRATION_1_2` in `DatabaseModule` — the old
   `fallbackToDestructiveMigration()` is gone on purpose (it would wipe roast
   history). Add proper migrations for future schema changes.
@@ -139,9 +142,9 @@ don't change it without asking.
 ## Current state / open items
 
 - All UI on the Dark Coffee Lab theme; detection gates implemented; guide and
-  editable notes done. **Nothing pushed since commit `3aa3a63`** — push only
-  when the owner says they're happy.
-- Done since then: CSV export/import (Settings → Your Data, RFC-4180, dedupes
+  editable notes done. Pushed through `a0c3996`; **v1.1.0 released** on GitHub
+  (signed APK, in-app updater live). Still: never push without owner approval.
+- Done: CSV export/import (Settings → Your Data, RFC-4180, dedupes
   on `startTimeMs`), Delete All History (confirm dialog), Keep Screen Awake
   (on by default, only while a roast is active), feedback loop (favourite ★ =
   reference roast shown as live FC/SC targets on the Roast screen with delta
