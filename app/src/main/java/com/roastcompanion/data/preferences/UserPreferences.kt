@@ -25,6 +25,7 @@ class UserPreferences @Inject constructor(
         val KEY_ALARM_SOUND_ENABLED  = booleanPreferencesKey("alarm_sound_enabled")
         val KEY_VIBRATION_ENABLED    = booleanPreferencesKey("vibration_enabled")
         val KEY_MIN_FC_TIME_MIN      = intPreferencesKey("min_fc_time_min")
+        val KEY_KEEP_SCREEN_ON       = booleanPreferencesKey("keep_screen_on")
 
         const val DEFAULT_THRESHOLD_MULTIPLIER = 3.5f
         const val DEFAULT_FC_QUIET_PERIOD_S    = 8
@@ -34,6 +35,7 @@ class UserPreferences @Inject constructor(
         const val DEFAULT_ALARM_SOUND_ENABLED  = true
         const val DEFAULT_VIBRATION_ENABLED    = true
         const val DEFAULT_MIN_FC_TIME_MIN      = 4
+        const val DEFAULT_KEEP_SCREEN_ON       = true
     }
 
     val thresholdMultiplier: Flow<Float> = context.dataStore.data.map {
@@ -60,6 +62,9 @@ class UserPreferences @Inject constructor(
     val minFcTimeMin: Flow<Int> = context.dataStore.data.map {
         it[KEY_MIN_FC_TIME_MIN] ?: DEFAULT_MIN_FC_TIME_MIN
     }
+    val keepScreenOn: Flow<Boolean> = context.dataStore.data.map {
+        it[KEY_KEEP_SCREEN_ON] ?: DEFAULT_KEEP_SCREEN_ON
+    }
 
     suspend fun setThresholdMultiplier(value: Float) {
         context.dataStore.edit { it[KEY_THRESHOLD_MULTIPLIER] = value }
@@ -85,6 +90,9 @@ class UserPreferences @Inject constructor(
     suspend fun setMinFcTimeMin(value: Int) {
         context.dataStore.edit { it[KEY_MIN_FC_TIME_MIN] = value }
     }
+    suspend fun setKeepScreenOn(value: Boolean) {
+        context.dataStore.edit { it[KEY_KEEP_SCREEN_ON] = value }
+    }
     suspend fun resetDefaults() {
         context.dataStore.edit { prefs ->
             prefs[KEY_THRESHOLD_MULTIPLIER] = DEFAULT_THRESHOLD_MULTIPLIER
@@ -95,6 +103,7 @@ class UserPreferences @Inject constructor(
             prefs[KEY_ALARM_SOUND_ENABLED]  = DEFAULT_ALARM_SOUND_ENABLED
             prefs[KEY_VIBRATION_ENABLED]    = DEFAULT_VIBRATION_ENABLED
             prefs[KEY_MIN_FC_TIME_MIN]      = DEFAULT_MIN_FC_TIME_MIN
+            prefs[KEY_KEEP_SCREEN_ON]       = DEFAULT_KEEP_SCREEN_ON
         }
     }
 }

@@ -111,12 +111,40 @@ don't change it without asking.
 - Undo for swipe-delete must call `repository.restoreSession(session)` (full
   entity re-insert), not `createSession(startTimeMs)` which drops crack data.
 - `gradle.properties` needs `android.useAndroidX=true` (safe-args fails without).
+- PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** — it silently
+  broke `keystore.properties` parsing once (first key became `﻿storeFile`,
+  release APK came out unsigned). Write config files BOM-free.
+- Room now uses a real `MIGRATION_1_2` in `DatabaseModule` — the old
+  `fallbackToDestructiveMigration()` is gone on purpose (it would wipe roast
+  history). Add proper migrations for future schema changes.
+
+## Release pipeline / versioning
+
+- Version lives in `app/build.gradle.kts` (`appVersionName`/`appVersionCode`,
+  scheme major*10000+minor*100+patch). CI overrides both from the git tag.
+- Tag `vX.Y.Z` + push → `.github/workflows/release.yml` builds a **signed**
+  APK (provisioned Gradle 8.7, not the broken wrapper) and publishes a GitHub
+  Release. See `RELEASING.md`.
+- Signing: `release.jks` + `keystore.properties` in repo root, **gitignored**
+  (repo is public). GitHub secrets `KEYSTORE_BASE64/KEYSTORE_PASSWORD/
+  KEY_ALIAS/KEY_PASSWORD` already set. Losing the keystore breaks updates.
+- In-app updater: `update/UpdateChecker.kt` reads
+  `api.github.com/repos/Xbjornsen/RoastCompanion/releases/latest` (public, no
+  token), compares semver vs `BuildConfig.VERSION_NAME`, downloads the .apk
+  asset to cache and fires the package installer via FileProvider. Settings →
+  App → Check for Updates.
+- First release install on the phone needs a one-time **uninstall** of the
+  adb debug build (debug vs release signature mismatch).
 
 ## Current state / open items
 
 - All UI on the Dark Coffee Lab theme; detection gates implemented; guide and
   editable notes done. **Nothing pushed since commit `3aa3a63`** — push only
   when the owner says they're happy.
-- Not yet implemented (discussed, deliberately deferred): CSV export,
-  "Delete All History", "Keep Screen Awake" toggle, ML-based crack
-  classification.
+- Done since then: CSV export/import (Settings → Your Data, RFC-4180, dedupes
+  on `startTimeMs`), Delete All History (confirm dialog), Keep Screen Awake
+  (on by default, only while a roast is active), feedback loop (favourite ★ =
+  reference roast shown as live FC/SC targets on the Roast screen with delta
+  at FC; 1–5 cup rating in session detail; Favourites filter chip), release
+  pipeline + in-app updater (above). DB schema v2.
+- Not yet implemented (deferred): ML-based crack classification.

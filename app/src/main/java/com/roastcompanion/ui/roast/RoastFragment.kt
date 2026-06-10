@@ -15,6 +15,7 @@ import android.os.VibratorManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
@@ -31,6 +32,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.roastcompanion.R
 import com.roastcompanion.audio.RoastPhase
+import com.roastcompanion.data.db.entity.RoastSession
 import com.roastcompanion.databinding.FragmentRoastBinding
 import com.roastcompanion.util.PermissionHelper
 import com.roastcompanion.util.TimeFormatter
@@ -167,8 +169,50 @@ class RoastFragment : Fragment() {
                         handleAlert(alert)
                     }
                 }
+
+                launch {
+                    combine(viewModel.keepScreenOn, viewModel.phase) { keep, phase ->
+                        keep && phase != RoastPhase.IDLE
+                    }.collect { keepOn ->
+                        val window = requireActivity().window
+                        if (keepOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                }
+
+                launch {
+                    viewModel.referenceRoast.collect { renderReference(it) }
+                }
             }
         }
+    }
+
+    private fun renderReference(ref: RoastSession?) {
+        if (ref == null) {
+            binding.cardReference.visibility = View.GONE
+            return
+        }
+        binding.cardReference.visibility = View.VISIBLE
+        binding.tvReferenceName.text =
+            "★ " + ref.profileName.ifBlank { TimeFormatter.formatDate(ref.startTimeMs) }
+
+        val targets = listOfNotNull(
+            ref.firstCrackStartMs?.let { "FC @ ${TimeFormatter.formatDuration(it - ref.startTimeMs)}" },
+            ref.secondCrackDetectedMs?.let { "SC @ ${TimeFormatter.formatDuration(it - ref.startTimeMs)}" },
+            ref.totalDurationMs?.let { "END @ ${TimeFormatter.formatDuration(it)}" }
+        )
+        binding.tvReferenceTargets.text =
+            if (targets.isEmpty()) "No crack times recorded" else targets.joinToString("  ·  ")
+    }
+
+    /** How this roast's first crack compares to the favourited reference. */
+    private fun fcDeltaVsReference(): String? {
+        val ref = viewModel.referenceRoast.value ?: return null
+        val refFcMs = ref.firstCrackStartMs?.minus(ref.startTimeMs) ?: return null
+        val diff = viewModel.sessionTimerMs.value - refFcMs
+        if (kotlin.math.abs(diff) < 5_000) return "right on your reference"
+        val dur = TimeFormatter.formatDuration(kotlin.math.abs(diff))
+        return if (diff < 0) "$dur earlier than your reference" else "$dur later than your reference"
     }
 
     private fun updatePhaseUi(phase: RoastPhase) {
@@ -272,7 +316,10 @@ class RoastFragment : Fragment() {
                 animateStripeColor(binding.fcStripe,
                     ContextCompat.getColor(ctx, R.color.lab_amber))
                 vibrate(longArrayOf(0, 200, 100, 200))
-                Snackbar.make(binding.root, R.string.alert_fc_detected, Snackbar.LENGTH_SHORT).show()
+                val msg = fcDeltaVsReference()
+                    ?.let { "First crack — $it" }
+                    ?: getString(R.string.alert_fc_detected)
+                Snackbar.make(binding.root, msg, Snackbar.LENGTH_LONG).show()
             }
             is RoastAlert.FirstCrackComplete -> {
                 Snackbar.make(binding.root, R.string.alert_fc_complete, Snackbar.LENGTH_SHORT).show()

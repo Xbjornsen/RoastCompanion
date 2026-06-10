@@ -20,6 +20,7 @@ class RoastSessionAdapter(
         fun bind(session: RoastSession) {
             binding.tvName.text = session.profileName.ifBlank { "Roast #${session.id}" }
             binding.tvDate.text = TimeFormatter.formatDate(session.startTimeMs)
+            binding.tvFav.visibility = if (session.isFavorite) View.VISIBLE else View.GONE
 
             // FC tag — time from roast start to first crack
             val fcStart = session.firstCrackStartMs

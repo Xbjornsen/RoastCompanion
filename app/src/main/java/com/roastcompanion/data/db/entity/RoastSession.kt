@@ -23,5 +23,11 @@ data class RoastSession(
     val totalDurationMs: Long? = null,
 
     val notes: String = "",
-    val profileName: String = ""
+    val profileName: String = "",
+
+    /** Marked by the user when this roast came out right — used as the reference profile. */
+    val isFavorite: Boolean = false,
+
+    /** Cup rating 1–5 after tasting; 0 = unrated. */
+    val rating: Int = 0
 )

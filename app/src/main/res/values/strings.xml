@@ -111,13 +111,32 @@
     <string name="keep_screen_on_desc">Stay on during active roast</string>
 
     <string name="export_data">Export Roast History</string>
-    <string name="export_data_desc">Save all sessions as a spreadsheet</string>
+    <string name="export_data_desc">Save all roasts as a spreadsheet file</string>
+
+    <string name="import_data">Import Roast History</string>
+    <string name="import_data_desc">Bring roasts back from an exported file</string>
 
     <string name="reset_defaults">Reset Settings</string>
     <string name="reset_defaults_desc">Put everything back to defaults</string>
 
     <string name="delete_all_history">Delete All History</string>
     <string name="delete_all_history_desc">Cannot be undone</string>
+    <string name="delete_all_confirm_title">Delete all history?</string>
+    <string name="delete_all_confirm_msg">This permanently deletes all %1$d roasts. Export a spreadsheet first if you want a backup.</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- App / updates -->
+    <string name="section_app">App</string>
+    <string name="check_updates">Check for Updates</string>
+    <string name="update_install">Download &amp; Install</string>
+
+    <!-- Feedback loop -->
+    <string name="filter_favs">★ Favourites</string>
+    <string name="favourite_this_roast">Favourite</string>
+    <string name="favourite_desc">Marks this roast as your reference profile</string>
+    <string name="rating_label">CUP RATING</string>
+    <string name="reference_label">REFERENCE ROAST</string>
 
     <!-- Notifications -->
     <string name="notif_channel_monitor">Roast Monitor</string>

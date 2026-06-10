@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -7,6 +10,12 @@ plugins {
     id("androidx.navigation.safeargs.kotlin")
 }
 
+// Single version source. The release workflow overrides these from the git tag:
+//   gradle assembleRelease -PappVersionName=1.2.0 -PappVersionCode=10200
+// versionCode scheme: major*10000 + minor*100 + patch
+val appVersionName = (project.findProperty("appVersionName") as String?) ?: "1.1.0"
+val appVersionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 10100
+
 android {
     namespace = "com.roastcompanion"
     compileSdk = 34
@@ -15,10 +24,27 @@ android {
         applicationId = "com.roastcompanion"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            // CI: env vars from GitHub secrets. Local: keystore.properties (gitignored).
+            val propsFile = rootProject.file("keystore.properties")
+            val props = Properties().apply {
+                if (propsFile.exists()) load(FileInputStream(propsFile))
+            }
+            val storePath = System.getenv("KEYSTORE_FILE") ?: props.getProperty("storeFile")
+            if (storePath != null) {
+                storeFile = file(storePath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: props.getProperty("storePassword")
+                keyAlias = System.getenv("KEY_ALIAS") ?: props.getProperty("keyAlias")
+                keyPassword = System.getenv("KEY_PASSWORD") ?: props.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -28,11 +54,15 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfigs.getByName("release").takeIf { it.storeFile != null }?.let {
+                signingConfig = it
+            }
         }
     }
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 
     compileOptions {

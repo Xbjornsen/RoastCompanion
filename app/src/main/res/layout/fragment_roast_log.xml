@@ -201,6 +201,18 @@
             android:textSize="12sp"
             android:background="@drawable/bg_chip"
             android:paddingHorizontal="14dp"
+            android:paddingVertical="6dp"
+            android:layout_marginEnd="6dp" />
+
+        <TextView
+            android:id="@+id/chip_favs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/filter_favs"
+            android:textColor="@color/lab_text_muted"
+            android:textSize="12sp"
+            android:background="@drawable/bg_chip"
+            android:paddingHorizontal="14dp"
             android:paddingVertical="6dp" />
     </LinearLayout>
 

@@ -63,7 +63,8 @@ class RoastLogFragment : Fragment() {
         val chips = mapOf(
             binding.chipAll to SessionFilter.ALL,
             binding.chipWeek to SessionFilter.THIS_WEEK,
-            binding.chipFc to SessionFilter.FC_ONLY
+            binding.chipFc to SessionFilter.FC_ONLY,
+            binding.chipFavs to SessionFilter.FAVOURITES
         )
         chips.forEach { (chip, filter) ->
             chip.setOnClickListener { viewModel.setFilter(filter) }
@@ -78,7 +79,8 @@ class RoastLogFragment : Fragment() {
         listOf(
             Triple(binding.chipAll, SessionFilter.ALL, "All"),
             Triple(binding.chipWeek, SessionFilter.THIS_WEEK, "This Week"),
-            Triple(binding.chipFc, SessionFilter.FC_ONLY, "FC Only")
+            Triple(binding.chipFc, SessionFilter.FC_ONLY, "FC Only"),
+            Triple(binding.chipFavs, SessionFilter.FAVOURITES, "Favourites")
         ).forEach { (chip, filter, _) ->
             val selected = filter == active
             chip.isSelected = selected

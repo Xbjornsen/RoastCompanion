@@ -6,7 +6,7 @@ import com.roastcompanion.data.db.entity.RoastSession
 
 @Database(
     entities = [RoastSession::class],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class RoastDatabase : RoomDatabase() {

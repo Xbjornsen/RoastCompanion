@@ -102,6 +102,55 @@
                 android:layout_marginTop="6dp" />
         </LinearLayout>
 
+        <!-- ── Reference roast card (latest favourite) ──────────────── -->
+        <LinearLayout
+            android:id="@+id/card_reference"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_surface"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/reference_label"
+                    android:textColor="@color/lab_text_dim"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.18" />
+
+                <TextView
+                    android:id="@+id/tv_reference_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/lab_amber"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_reference_targets"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/lab_text"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:layout_marginTop="6dp" />
+        </LinearLayout>
+
         <!-- ── Mic level card ────────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"

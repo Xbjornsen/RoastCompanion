@@ -99,6 +99,129 @@
                 android:textColor="@color/lab_amber" android:textSize="14sp" android:textStyle="bold" android:fontFamily="monospace" />
         </LinearLayout>
 
+        <!-- ── Feedback card — favourite + cup rating ────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_surface"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/favourite_this_roast"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/favourite_desc"
+                        android:textColor="@color/lab_text_muted"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btn_favorite"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:text="☆"
+                    android:textColor="@color/lab_text_dim"
+                    android:textSize="24sp"
+                    android:gravity="center"
+                    android:background="@drawable/bg_phase_pill" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/lab_border"
+                android:layout_marginVertical="12dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/rating_label"
+                android:textColor="@color/lab_text_muted"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.18"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:id="@+id/rating_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/star_1"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="☆"
+                    android:textColor="@color/lab_text_dim"
+                    android:textSize="24sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/star_2"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="☆"
+                    android:textColor="@color/lab_text_dim"
+                    android:textSize="24sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/star_3"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="☆"
+                    android:textColor="@color/lab_text_dim"
+                    android:textSize="24sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/star_4"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="☆"
+                    android:textColor="@color/lab_text_dim"
+                    android:textSize="24sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/star_5"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="☆"
+                    android:textColor="@color/lab_text_dim"
+                    android:textSize="24sp"
+                    android:gravity="center" />
+            </LinearLayout>
+        </LinearLayout>
+
         <!-- ── Notes card — inline editable ──────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"

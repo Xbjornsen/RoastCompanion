@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
 
-enum class SessionFilter { ALL, THIS_WEEK, FC_ONLY }
+enum class SessionFilter { ALL, THIS_WEEK, FC_ONLY, FAVOURITES }
 
 data class HistoryStats(
     val thisMonth: Int = 0,
@@ -100,6 +100,7 @@ class RoastLogViewModel @Inject constructor(
                 session.startTimeMs >= weekAgo
             }
             SessionFilter.FC_ONLY -> session.firstCrackStartMs != null
+            SessionFilter.FAVOURITES -> session.isFavorite
         }
 
     private fun matchesQuery(session: RoastSession, query: String): Boolean {

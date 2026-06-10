@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.roastcompanion.audio.AudioAnalyzer
 import com.roastcompanion.audio.CrackEvent
 import com.roastcompanion.audio.RoastPhase
+import com.roastcompanion.data.db.entity.RoastSession
 import com.roastcompanion.data.preferences.UserPreferences
 import com.roastcompanion.data.repository.RoastRepository
 import com.roastcompanion.model.CarryoverState
@@ -17,10 +18,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -42,6 +45,13 @@ class RoastViewModel @Inject constructor(
     val phase: StateFlow<RoastPhase>   = audioAnalyzer.phaseFlow
     val rmsLevel: StateFlow<Float>     = audioAnalyzer.rmsFlow
     val ambientLevel: StateFlow<Float> = audioAnalyzer.ambientRmsFlow
+
+    val keepScreenOn: StateFlow<Boolean> = prefs.keepScreenOn
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_KEEP_SCREEN_ON)
+
+    /** Latest favourited roast — live reference targets during a roast. */
+    val referenceRoast: StateFlow<RoastSession?> = repository.getLatestFavorite()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private val _sessionTimerMs = MutableStateFlow(0L)
     val sessionTimerMs: StateFlow<Long> = _sessionTimerMs.asStateFlow()

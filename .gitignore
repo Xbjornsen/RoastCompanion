@@ -10,3 +10,7 @@
 local.properties
 /app/build
 /app/schemas
+
+# Release signing — never commit (public repo)
+release.jks
+keystore.properties

@@ -62,4 +62,36 @@ class RoastRepository @Inject constructor(
     }
 
     suspend fun getSessionById(id: Long): RoastSession? = dao.getSessionById(id)
+
+    suspend fun deleteAllSessions() = dao.deleteAll()
+
+    suspend fun getAllSessionsOnce(): List<RoastSession> = dao.getAllSessionsOnce()
+
+    /**
+     * Insert imported sessions, skipping any whose startTimeMs already exists
+     * (re-importing the same CSV must not duplicate history).
+     * Returns the number actually inserted.
+     */
+    suspend fun importSessions(sessions: List<RoastSession>): Int {
+        val existing = dao.getAllStartTimes().toHashSet()
+        val fresh = sessions
+            .filter { it.startTimeMs !in existing }
+            .map { it.copy(id = 0) }
+        if (fresh.isNotEmpty()) dao.insertAll(fresh)
+        return fresh.size
+    }
+
+    suspend fun setFavorite(id: Long, favorite: Boolean) {
+        dao.getSessionById(id)?.let {
+            dao.update(it.copy(isFavorite = favorite))
+        }
+    }
+
+    suspend fun setRating(id: Long, rating: Int) {
+        dao.getSessionById(id)?.let {
+            dao.update(it.copy(rating = rating))
+        }
+    }
+
+    fun getLatestFavorite(): Flow<RoastSession?> = dao.getLatestFavorite()
 }

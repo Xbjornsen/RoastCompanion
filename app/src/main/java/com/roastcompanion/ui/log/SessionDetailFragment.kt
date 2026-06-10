@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -12,6 +13,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.google.android.material.snackbar.Snackbar
+import com.roastcompanion.R
 import com.roastcompanion.data.db.entity.RoastSession
 import com.roastcompanion.databinding.FragmentSessionDetailBinding
 import com.roastcompanion.util.TimeFormatter
@@ -42,6 +44,10 @@ class SessionDetailFragment : Fragment() {
             viewModel.saveNotes(binding.etNotes.text.toString())
             Snackbar.make(binding.root, "Notes saved", Snackbar.LENGTH_SHORT).show()
         }
+        binding.btnFavorite.setOnClickListener { viewModel.toggleFavorite() }
+        starViews().forEachIndexed { i, star ->
+            star.setOnClickListener { viewModel.setRating(i + 1) }
+        }
 
         viewModel.loadSession(args.sessionId)
 
@@ -68,7 +74,24 @@ class SessionDetailFragment : Fragment() {
             binding.etNotes.setText(session.notes)
             notesLoaded = true
         }
+
+        val ctx = requireContext()
+        val amber = ContextCompat.getColor(ctx, R.color.lab_amber)
+        val dim = ContextCompat.getColor(ctx, R.color.lab_text_dim)
+
+        binding.btnFavorite.text = if (session.isFavorite) "★" else "☆"
+        binding.btnFavorite.setTextColor(if (session.isFavorite) amber else dim)
+
+        starViews().forEachIndexed { i, star ->
+            val filled = i < session.rating
+            star.text = if (filled) "★" else "☆"
+            star.setTextColor(if (filled) amber else dim)
+        }
     }
+
+    private fun starViews() = listOf(
+        binding.star1, binding.star2, binding.star3, binding.star4, binding.star5
+    )
 
     override fun onDestroyView() {
         super.onDestroyView()

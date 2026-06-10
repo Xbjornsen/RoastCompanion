@@ -32,4 +32,23 @@ class SessionDetailViewModel @Inject constructor(
             _session.value = _session.value?.copy(notes = notes)
         }
     }
+
+    fun toggleFavorite() {
+        val current = _session.value ?: return
+        val newValue = !current.isFavorite
+        viewModelScope.launch {
+            repository.setFavorite(current.id, newValue)
+            _session.value = current.copy(isFavorite = newValue)
+        }
+    }
+
+    /** Tapping the current rating again clears it. */
+    fun setRating(rating: Int) {
+        val current = _session.value ?: return
+        val newValue = if (current.rating == rating) 0 else rating
+        viewModelScope.launch {
+            repository.setRating(current.id, newValue)
+            _session.value = current.copy(rating = newValue)
+        }
+    }
 }
