@@ -25,11 +25,22 @@ object DatabaseModule {
         }
     }
 
+    // v3: temperature logging at FC/SC events + bean origin / blend flag
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE roast_sessions ADD COLUMN fcStartTempC REAL")
+            db.execSQL("ALTER TABLE roast_sessions ADD COLUMN fcEndTempC REAL")
+            db.execSQL("ALTER TABLE roast_sessions ADD COLUMN scTempC REAL")
+            db.execSQL("ALTER TABLE roast_sessions ADD COLUMN beanOrigin TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE roast_sessions ADD COLUMN isBlend INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): RoastDatabase =
         Room.databaseBuilder(context, RoastDatabase::class.java, RoastDatabase.DATABASE_NAME)
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides

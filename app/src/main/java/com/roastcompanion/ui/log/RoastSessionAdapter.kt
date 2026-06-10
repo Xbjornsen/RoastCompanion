@@ -49,7 +49,7 @@ class RoastSessionAdapter(
                 ?.let { TimeFormatter.formatDuration(it) } ?: "—"
             binding.tvFcDur.text = session.firstCrackDurationMs
                 ?.let { TimeFormatter.formatDuration(it) } ?: "—"
-            binding.tvProfile.text = session.profileName.ifBlank { "—" }
+            binding.tvProfile.text = session.beanOrigin.ifBlank { session.profileName.ifBlank { "—" } }
 
             binding.root.setOnClickListener { onClick(session) }
         }

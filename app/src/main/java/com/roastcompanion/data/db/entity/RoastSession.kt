@@ -29,5 +29,14 @@ data class RoastSession(
     val isFavorite: Boolean = false,
 
     /** Cup rating 1–5 after tasting; 0 = unrated. */
-    val rating: Int = 0
+    val rating: Int = 0,
+
+    // v3: temperature logging — stored in °C, displayed per user preference
+    val fcStartTempC: Float? = null,
+    val fcEndTempC: Float? = null,
+    val scTempC: Float? = null,
+
+    // v3: bean metadata
+    val beanOrigin: String = "",
+    val isBlend: Boolean = false
 )

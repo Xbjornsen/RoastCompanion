@@ -26,6 +26,8 @@ class UserPreferences @Inject constructor(
         val KEY_VIBRATION_ENABLED    = booleanPreferencesKey("vibration_enabled")
         val KEY_MIN_FC_TIME_MIN      = intPreferencesKey("min_fc_time_min")
         val KEY_KEEP_SCREEN_ON       = booleanPreferencesKey("keep_screen_on")
+        val KEY_TEMP_UNIT_CELSIUS    = booleanPreferencesKey("temp_unit_celsius")
+        val KEY_ROASTER_PROFILE      = stringPreferencesKey("roaster_profile")
 
         const val DEFAULT_THRESHOLD_MULTIPLIER = 3.5f
         const val DEFAULT_FC_QUIET_PERIOD_S    = 8
@@ -36,6 +38,8 @@ class UserPreferences @Inject constructor(
         const val DEFAULT_VIBRATION_ENABLED    = true
         const val DEFAULT_MIN_FC_TIME_MIN      = 4
         const val DEFAULT_KEEP_SCREEN_ON       = true
+        const val DEFAULT_TEMP_UNIT_CELSIUS    = true
+        const val DEFAULT_ROASTER_PROFILE      = "Gene Cafe CBR-101"
     }
 
     val thresholdMultiplier: Flow<Float> = context.dataStore.data.map {
@@ -65,6 +69,12 @@ class UserPreferences @Inject constructor(
     val keepScreenOn: Flow<Boolean> = context.dataStore.data.map {
         it[KEY_KEEP_SCREEN_ON] ?: DEFAULT_KEEP_SCREEN_ON
     }
+    val tempUnitCelsius: Flow<Boolean> = context.dataStore.data.map {
+        it[KEY_TEMP_UNIT_CELSIUS] ?: DEFAULT_TEMP_UNIT_CELSIUS
+    }
+    val roasterProfile: Flow<String> = context.dataStore.data.map {
+        it[KEY_ROASTER_PROFILE] ?: DEFAULT_ROASTER_PROFILE
+    }
 
     suspend fun setThresholdMultiplier(value: Float) {
         context.dataStore.edit { it[KEY_THRESHOLD_MULTIPLIER] = value }
@@ -92,6 +102,12 @@ class UserPreferences @Inject constructor(
     }
     suspend fun setKeepScreenOn(value: Boolean) {
         context.dataStore.edit { it[KEY_KEEP_SCREEN_ON] = value }
+    }
+    suspend fun setTempUnitCelsius(value: Boolean) {
+        context.dataStore.edit { it[KEY_TEMP_UNIT_CELSIUS] = value }
+    }
+    suspend fun setRoasterProfile(value: String) {
+        context.dataStore.edit { it[KEY_ROASTER_PROFILE] = value }
     }
     suspend fun resetDefaults() {
         context.dataStore.edit { prefs ->

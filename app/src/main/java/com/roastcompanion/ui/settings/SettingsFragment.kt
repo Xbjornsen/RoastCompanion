@@ -16,6 +16,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.roastcompanion.BuildConfig
 import com.roastcompanion.R
+import com.roastcompanion.data.model.RoasterProfiles
 import com.roastcompanion.databinding.FragmentSettingsBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -100,6 +101,10 @@ class SettingsFragment : Fragment() {
         binding.btnDeleteAll.setOnClickListener { confirmDeleteAll() }
         binding.btnUpdate.setOnClickListener { onUpdateRowTapped() }
 
+        binding.cardRoaster.setOnClickListener { showRoasterPicker() }
+        binding.chipCelsius.setOnClickListener { if (!updatingFromVm) viewModel.setTempUnitCelsius(true) }
+        binding.chipFahrenheit.setOnClickListener { if (!updatingFromVm) viewModel.setTempUnitCelsius(false) }
+
         binding.tvCrumb.text = "SETTINGS · V${BuildConfig.VERSION_NAME}"
         binding.tvFooterVersion.text = "ROASTCOMPANION · ${BuildConfig.VERSION_NAME}"
         binding.tvUpdateSub.text = "Version ${BuildConfig.VERSION_NAME}"
@@ -183,6 +188,28 @@ class SettingsFragment : Fragment() {
                 launch {
                     viewModel.updateState.collect { renderUpdateState(it) }
                 }
+                launch {
+                    viewModel.roasterProfile.collect { profileName ->
+                        updatingFromVm = true
+                        val profile = RoasterProfiles.byName(profileName) ?: RoasterProfiles.all.last()
+                        binding.tvRoasterName.text = profile.name
+                        binding.tvRoasterSub.text = buildString {
+                            if (profile.type.isNotEmpty()) { append(profile.type); append(" · ") }
+                            append("${profile.carryoverSecs}s carryover")
+                        }
+                        updatingFromVm = false
+                    }
+                }
+                launch {
+                    viewModel.tempUnitCelsius.collect { isCelsius ->
+                        updatingFromVm = true
+                        val amber = ContextCompat.getColor(requireContext(), R.color.lab_amber)
+                        val dim = ContextCompat.getColor(requireContext(), R.color.lab_text_dim)
+                        binding.chipCelsius.setTextColor(if (isCelsius) amber else dim)
+                        binding.chipFahrenheit.setTextColor(if (!isCelsius) amber else dim)
+                        updatingFromVm = false
+                    }
+                }
             }
         }
     }
@@ -228,6 +255,20 @@ class SettingsFragment : Fragment() {
                 binding.tvUpdateSub.text = state.message
             }
         }
+    }
+
+    private fun showRoasterPicker() {
+        val names = RoasterProfiles.all.map { it.name }.toTypedArray()
+        val currentName = viewModel.roasterProfile.value
+        val currentIdx = RoasterProfiles.all.indexOfFirst { it.name == currentName }.coerceAtLeast(0)
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Select Roaster")
+            .setSingleChoiceItems(names, currentIdx) { dialog, which ->
+                viewModel.selectRoaster(RoasterProfiles.all[which])
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun confirmDeleteAll() {

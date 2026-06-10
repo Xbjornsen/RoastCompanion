@@ -20,7 +20,9 @@ object RoastCsv {
         "secondCrackDetectedMs", "coolingStartedMs", "endTimeMs",
         "firstCrackDurationMs", "totalDurationMs",
         "favorite", "rating",
-        "profileName", "notes"
+        "profileName", "notes",
+        "fcStartTempC", "fcEndTempC", "scTempC",
+        "beanOrigin", "isBlend"
     )
 
     private fun dateFormat() = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
@@ -43,7 +45,12 @@ object RoastCsv {
                 if (s.isFavorite) "1" else "0",
                 s.rating.toString(),
                 s.profileName,
-                s.notes
+                s.notes,
+                s.fcStartTempC?.toString() ?: "",
+                s.fcEndTempC?.toString() ?: "",
+                s.scTempC?.toString() ?: "",
+                s.beanOrigin,
+                if (s.isBlend) "1" else "0"
             )
             sb.append(fields.joinToString(",") { escape(it) }).append("\r\n")
         }
@@ -81,7 +88,12 @@ object RoastCsv {
                 isFavorite = row.col("favorite") == "1",
                 rating = (row.col("rating")?.toIntOrNull() ?: 0).coerceIn(0, 5),
                 profileName = row.col("profileName") ?: "",
-                notes = row.col("notes") ?: ""
+                notes = row.col("notes") ?: "",
+                fcStartTempC = row.col("fcStartTempC")?.toFloatOrNull(),
+                fcEndTempC = row.col("fcEndTempC")?.toFloatOrNull(),
+                scTempC = row.col("scTempC")?.toFloatOrNull(),
+                beanOrigin = row.col("beanOrigin") ?: "",
+                isBlend = row.col("isBlend") == "1"
             )
         }
     }

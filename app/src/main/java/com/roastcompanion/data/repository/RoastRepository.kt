@@ -94,4 +94,16 @@ class RoastRepository @Inject constructor(
     }
 
     fun getLatestFavorite(): Flow<RoastSession?> = dao.getLatestFavorite()
+
+    suspend fun updateTemperatures(id: Long, fcStartTempC: Float?, fcEndTempC: Float?, scTempC: Float?) {
+        dao.getSessionById(id)?.let {
+            dao.update(it.copy(fcStartTempC = fcStartTempC, fcEndTempC = fcEndTempC, scTempC = scTempC))
+        }
+    }
+
+    suspend fun updateBeanInfo(id: Long, origin: String, isBlend: Boolean) {
+        dao.getSessionById(id)?.let {
+            dao.update(it.copy(beanOrigin = origin, isBlend = isBlend))
+        }
+    }
 }

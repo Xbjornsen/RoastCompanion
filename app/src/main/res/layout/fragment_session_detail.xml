@@ -78,12 +78,43 @@
 
             <TextView android:id="@+id/tv_start" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace" />
-            <TextView android:id="@+id/tv_fc_start" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace" android:layout_marginTop="8dp" />
-            <TextView android:id="@+id/tv_fc_end" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace" android:layout_marginTop="8dp" />
-            <TextView android:id="@+id/tv_sc" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace" android:layout_marginTop="8dp" />
+
+            <!-- FC Start row with temp field -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="8dp">
+                <TextView android:id="@+id/tv_fc_start" android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace" />
+                <EditText android:id="@+id/et_fc_start_temp" android:layout_width="80dp" android:layout_height="wrap_content"
+                    android:hint="—°C" android:textColor="@color/lab_text" android:textColorHint="@color/lab_text_dim"
+                    android:textSize="12sp" android:fontFamily="monospace" android:gravity="end"
+                    android:inputType="numberDecimal" android:background="@null" android:importantForAutofill="no"
+                    android:imeOptions="actionDone" android:paddingVertical="4dp" />
+            </LinearLayout>
+
+            <!-- FC End row with temp field -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="8dp">
+                <TextView android:id="@+id/tv_fc_end" android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace" />
+                <EditText android:id="@+id/et_fc_end_temp" android:layout_width="80dp" android:layout_height="wrap_content"
+                    android:hint="—°C" android:textColor="@color/lab_text" android:textColorHint="@color/lab_text_dim"
+                    android:textSize="12sp" android:fontFamily="monospace" android:gravity="end"
+                    android:inputType="numberDecimal" android:background="@null" android:importantForAutofill="no"
+                    android:imeOptions="actionDone" android:paddingVertical="4dp" />
+            </LinearLayout>
+
+            <!-- SC row with temp field -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="8dp">
+                <TextView android:id="@+id/tv_sc" android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace" />
+                <EditText android:id="@+id/et_sc_temp" android:layout_width="80dp" android:layout_height="wrap_content"
+                    android:hint="—°C" android:textColor="@color/lab_text" android:textColorHint="@color/lab_text_dim"
+                    android:textSize="12sp" android:fontFamily="monospace" android:gravity="end"
+                    android:inputType="numberDecimal" android:background="@null" android:importantForAutofill="no"
+                    android:imeOptions="actionDone" android:paddingVertical="4dp" />
+            </LinearLayout>
+
             <TextView android:id="@+id/tv_cooling" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace" android:layout_marginTop="8dp" />
             <TextView android:id="@+id/tv_end" android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -97,6 +128,71 @@
 
             <TextView android:id="@+id/tv_total" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textColor="@color/lab_amber" android:textSize="14sp" android:textStyle="bold" android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- ── Bean info card ────────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_surface"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BEAN"
+                android:textColor="@color/lab_text_muted"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.18"
+                android:layout_marginBottom="10dp" />
+
+            <EditText
+                android:id="@+id/et_bean_origin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Country or region (e.g. Ethiopia Yirgacheffe)"
+                android:textColor="@color/lab_text"
+                android:textColorHint="@color/lab_text_dim"
+                android:textSize="13sp"
+                android:background="@drawable/bg_search"
+                android:padding="12dp"
+                android:inputType="textCapWords"
+                android:importantForAutofill="no"
+                android:layout_marginBottom="12dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/chip_single_origin"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:text="SINGLE ORIGIN"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08"
+                    android:gravity="center"
+                    android:background="@drawable/bg_phase_pill"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/chip_blend"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:text="BLEND"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08"
+                    android:gravity="center"
+                    android:background="@drawable/bg_phase_pill" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- ── Feedback card — favourite + cup rating ────────────────── -->

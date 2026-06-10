@@ -68,6 +68,12 @@ class SettingsViewModel @Inject constructor(
     val keepScreenOn: StateFlow<Boolean> = prefs.keepScreenOn
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_KEEP_SCREEN_ON)
 
+    val tempUnitCelsius: StateFlow<Boolean> = prefs.tempUnitCelsius
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_TEMP_UNIT_CELSIUS)
+
+    val roasterProfile: StateFlow<String> = prefs.roasterProfile
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_ROASTER_PROFILE)
+
     /** Roast count for the delete-all confirmation dialog. */
     val sessionCount: StateFlow<Int> = repository.getAllSessions()
         .map { it.size }
@@ -88,7 +94,15 @@ class SettingsViewModel @Inject constructor(
     fun setVibrationEnabled(v: Boolean)  { viewModelScope.launch { prefs.setVibrationEnabled(v) } }
     fun setMinFcTimeMin(v: Int)          { viewModelScope.launch { prefs.setMinFcTimeMin(v) } }
     fun setKeepScreenOn(v: Boolean)      { viewModelScope.launch { prefs.setKeepScreenOn(v) } }
+    fun setTempUnitCelsius(v: Boolean)   { viewModelScope.launch { prefs.setTempUnitCelsius(v) } }
     fun resetDefaults()                  { viewModelScope.launch { prefs.resetDefaults() } }
+
+    fun selectRoaster(profile: com.roastcompanion.data.model.RoasterProfile) {
+        viewModelScope.launch {
+            prefs.setRoasterProfile(profile.name)
+            prefs.setCarryoverDurationS(profile.carryoverSecs)
+        }
+    }
 
     // ── CSV export / import ──────────────────────────────────────────
 
