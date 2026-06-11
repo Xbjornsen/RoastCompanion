@@ -53,10 +53,14 @@ class AudioAnalyzer @Inject constructor(
     private var fcLastTransientMs = 0L
     private var transientWindowStartMs = 0L
     private var transientCountInWindow = 0
+    @Volatile private var paused = false
 
     // ---- Output ----
     private val _phaseFlow = MutableStateFlow(RoastPhase.IDLE)
     val phaseFlow: StateFlow<RoastPhase> = _phaseFlow.asStateFlow()
+
+    private val _isPaused = MutableStateFlow(false)
+    val isPaused: StateFlow<Boolean> = _isPaused.asStateFlow()
 
     private val _eventFlow = MutableSharedFlow<CrackEvent>(extraBufferCapacity = 16)
     val eventFlow: SharedFlow<CrackEvent> = _eventFlow.asSharedFlow()
@@ -76,6 +80,8 @@ class AudioAnalyzer @Inject constructor(
     }
 
     fun startSession() {
+        paused = false
+        _isPaused.value = false
         phase = RoastPhase.MONITORING
         sessionStartMs = System.currentTimeMillis()
         fcStartMs = 0L
@@ -86,6 +92,24 @@ class AudioAnalyzer @Inject constructor(
         _phaseFlow.value = phase
     }
 
+    fun pauseSession() {
+        if (phase != RoastPhase.IDLE) {
+            paused = true
+            _isPaused.value = true
+        }
+    }
+
+    fun resumeSession() {
+        if (paused) {
+            paused = false
+            _isPaused.value = false
+            // Reset the transient window so the quiet pause period doesn't
+            // trigger FC-complete via the quiet-period check.
+            transientWindowStartMs = System.currentTimeMillis()
+            fcLastTransientMs = 0L
+        }
+    }
+
     fun startCooling() {
         if (phase == RoastPhase.SECOND_CRACK_ACTIVE || phase == RoastPhase.FIRST_CRACK_COMPLETE) {
             phase = RoastPhase.COOLING
@@ -94,6 +118,8 @@ class AudioAnalyzer @Inject constructor(
     }
 
     fun stopSession() {
+        paused = false
+        _isPaused.value = false
         phase = RoastPhase.IDLE
         _phaseFlow.value = phase
         detector.reset()
@@ -101,6 +127,7 @@ class AudioAnalyzer @Inject constructor(
 
     /** Called from the AudioRecord read loop on a background thread (IO dispatcher). */
     fun processBuffer(samples: ShortArray, count: Int = samples.size) {
+        if (paused) return
         val now = System.currentTimeMillis()
         val rms = detector.computeRms(samples, count)
         _rmsFlow.value = rms

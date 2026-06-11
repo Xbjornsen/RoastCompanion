@@ -29,7 +29,7 @@ class UserPreferences @Inject constructor(
         val KEY_TEMP_UNIT_CELSIUS    = booleanPreferencesKey("temp_unit_celsius")
         val KEY_ROASTER_PROFILE      = stringPreferencesKey("roaster_profile")
 
-        const val DEFAULT_THRESHOLD_MULTIPLIER = 3.5f
+        const val DEFAULT_THRESHOLD_MULTIPLIER = 2.5f
         const val DEFAULT_FC_QUIET_PERIOD_S    = 8
         const val DEFAULT_CARRYOVER_DURATION_S = 45
         const val DEFAULT_MIN_TRANSIENTS_FC    = 3

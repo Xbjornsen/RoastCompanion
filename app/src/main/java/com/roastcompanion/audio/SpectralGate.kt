@@ -7,11 +7,14 @@ import kotlin.math.PI
  * FFT-based spectral check that distinguishes crack-like sounds from
  * other loud transients.
  *
- * Coffee cracks are short broadband pops with most of their energy in
- * the 2–9 kHz band. The CBR-101's fan/drum rumble sits below ~1 kHz,
- * and voices mostly below 1 kHz — so a loud frame whose energy is NOT
- * concentrated in the crack band (door slam, speech, bump against the
- * table) gets rejected even though it passed the amplitude threshold.
+ * Coffee cracks are short broadband pops with elevated energy in the
+ * 2–9 kHz band. However, in a drum-roaster environment (Gene Cafe CBR-101)
+ * the motor/drum/fan noise keeps low-frequency energy high continuously,
+ * and crack sounds travel through drum walls and bean mass which attenuates
+ * highs — so the crack-band fraction of a genuine crack in this environment
+ * is 0.20–0.35, not the 0.50+ you'd see in a quiet room.
+ * The threshold is set accordingly. Pure low-frequency events (thuds, bangs
+ * on the table) still score near 0.0 and are correctly rejected.
  */
 class SpectralGate {
 
@@ -32,9 +35,10 @@ class SpectralGate {
         /**
          * Minimum fraction of (150Hz..Nyquist) energy that must fall in
          * the 2–9 kHz band for a frame to count as crack-like.
-         * Cracks measure well above this; voice and thuds well below.
+         * 0.20 = 20%: passes drum-roaster cracks (0.20–0.35 in practice),
+         * rejects pure low-frequency thuds/bangs (near 0.0).
          */
-        const val CRACK_BAND_MIN_RATIO = 0.45f
+        const val CRACK_BAND_MIN_RATIO = 0.20f
     }
 
     private val real = DoubleArray(FFT_SIZE)

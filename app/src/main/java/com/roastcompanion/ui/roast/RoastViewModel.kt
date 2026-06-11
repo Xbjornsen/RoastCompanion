@@ -43,6 +43,7 @@ class RoastViewModel @Inject constructor(
 
     // Expose analyzer flows directly — no service binding needed
     val phase: StateFlow<RoastPhase>   = audioAnalyzer.phaseFlow
+    val isPaused: StateFlow<Boolean>   = audioAnalyzer.isPaused
     val rmsLevel: StateFlow<Float>     = audioAnalyzer.rmsFlow
     val ambientLevel: StateFlow<Float> = audioAnalyzer.ambientRmsFlow
 
@@ -171,6 +172,34 @@ class RoastViewModel @Inject constructor(
                 elapsed++
             }
         }
+    }
+
+    fun onPauseRoast() {
+        if (!isSessionActive || audioAnalyzer.isPaused.value) return
+        audioAnalyzer.pauseSession()
+    }
+
+    fun onResumeRoast() {
+        if (!isSessionActive || !audioAnalyzer.isPaused.value) return
+        audioAnalyzer.resumeSession()
+    }
+
+    fun onResetRoast(context: Context) {
+        if (!isSessionActive) return
+        isSessionActive = false
+        timerJob?.cancel()
+        carryoverJob?.cancel()
+        _sessionTimerMs.value = 0L
+        _fcStartMs.value = null
+        _fcEndMs.value = null
+        _scDetectedMs.value = null
+
+        viewModelScope.launch {
+            if (currentSessionId >= 0) repository.deleteSession(currentSessionId)
+        }
+
+        context.startService(RoastMonitorService.stopIntent(context))
+        currentSessionId = -1L
     }
 
     fun isSessionActive(): Boolean = isSessionActive

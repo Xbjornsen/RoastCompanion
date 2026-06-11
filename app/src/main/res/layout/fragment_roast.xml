@@ -383,8 +383,10 @@
         </LinearLayout>
 
         <!-- ── Action buttons ────────────────────────────────────────── -->
+
+        <!-- START: shown when idle -->
         <Button
-            android:id="@+id/btn_start_stop"
+            android:id="@+id/btn_start"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:text="@string/start_roast"
@@ -394,7 +396,57 @@
             android:letterSpacing="0.05"
             android:background="@drawable/bg_btn_primary"
             android:stateListAnimator="@null"
-            android:layout_marginBottom="10dp" />
+            android:layout_marginBottom="10dp"
+            android:visibility="visible" />
+
+        <!-- PAUSE + STOP row: shown when active -->
+        <LinearLayout
+            android:id="@+id/btn_group_active"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="10dp"
+            android:visibility="gone">
+
+            <Button
+                android:id="@+id/btn_pause_resume"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="Pause"
+                android:textColor="@color/lab_text_muted"
+                android:textSize="14sp"
+                android:background="@drawable/bg_btn_ghost"
+                android:stateListAnimator="@null"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_stop"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="Stop"
+                android:textColor="@color/lab_background"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"
+                android:background="@drawable/bg_btn_primary"
+                android:stateListAnimator="@null" />
+        </LinearLayout>
+
+        <!-- RESET: small ghost, shown when active -->
+        <Button
+            android:id="@+id/btn_reset"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_gravity="center_horizontal"
+            android:text="Reset"
+            android:textColor="@color/lab_text_dim"
+            android:textSize="12sp"
+            android:background="@null"
+            android:stateListAnimator="@null"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/btn_start_cooling"

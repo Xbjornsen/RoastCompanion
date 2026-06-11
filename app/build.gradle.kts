@@ -13,8 +13,8 @@ plugins {
 // Single version source. The release workflow overrides these from the git tag:
 //   gradle assembleRelease -PappVersionName=1.2.0 -PappVersionCode=10200
 // versionCode scheme: major*10000 + minor*100 + patch
-val appVersionName = (project.findProperty("appVersionName") as String?) ?: "1.3.0"
-val appVersionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 10300
+val appVersionName = (project.findProperty("appVersionName") as String?) ?: "1.4.0"
+val appVersionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 10400
 
 android {
     namespace = "com.roastcompanion"

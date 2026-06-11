@@ -97,12 +97,29 @@ class RoastFragment : Fragment() {
     }
 
     private fun setupButtons() {
-        binding.btnStartStop.setOnClickListener {
-            if (viewModel.isSessionActive()) {
-                viewModel.onStopRoast(requireContext())
+        binding.btnStart.setOnClickListener {
+            requestPermissionsAndStart()
+        }
+
+        binding.btnStop.setOnClickListener {
+            viewModel.onStopRoast(requireContext())
+        }
+
+        binding.btnPauseResume.setOnClickListener {
+            if (viewModel.isPaused.value) {
+                viewModel.onResumeRoast()
             } else {
-                requestPermissionsAndStart()
+                viewModel.onPauseRoast()
             }
+        }
+
+        binding.btnReset.setOnClickListener {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Reset roast?")
+                .setMessage("This will discard the current roast and clear all detected crack events.")
+                .setPositiveButton("Reset") { _, _ -> viewModel.onResetRoast(requireContext()) }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
         }
 
         binding.btnStartCooling.setOnClickListener {
@@ -167,6 +184,20 @@ class RoastFragment : Fragment() {
                 launch {
                     viewModel.alerts.collect { alert ->
                         handleAlert(alert)
+                    }
+                }
+
+                launch {
+                    combine(viewModel.phase, viewModel.isPaused) { phase, paused ->
+                        phase to paused
+                    }.collect { (phase, paused) ->
+                        updateButtonVisibility(phase, paused)
+                    }
+                }
+
+                launch {
+                    viewModel.isPaused.collect { paused ->
+                        binding.btnPauseResume.text = if (paused) "Resume" else "Pause"
                     }
                 }
 
@@ -260,14 +291,18 @@ class RoastFragment : Fragment() {
             )
         )
 
-        val isActive = phase != RoastPhase.IDLE
-        binding.btnStartStop.text =
-            if (isActive) getString(R.string.stop_roast) else getString(R.string.start_roast)
-
         val coolEnabled = phase == RoastPhase.FIRST_CRACK_COMPLETE ||
                 phase == RoastPhase.SECOND_CRACK_ACTIVE
         binding.btnStartCooling.isEnabled = coolEnabled
         binding.btnStartCooling.alpha = if (coolEnabled) 1f else 0.5f
+    }
+
+    private fun updateButtonVisibility(phase: RoastPhase, paused: Boolean) {
+        val isActive = phase != RoastPhase.IDLE
+        binding.btnStart.visibility = if (isActive) View.GONE else View.VISIBLE
+        binding.btnGroupActive.visibility = if (isActive) View.VISIBLE else View.GONE
+        binding.btnReset.visibility = if (isActive) View.VISIBLE else View.GONE
+        binding.btnPauseResume.text = if (paused) "Resume" else "Pause"
     }
 
     private fun updateLevelMeter(rms: Float) {
