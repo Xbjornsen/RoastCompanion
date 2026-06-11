@@ -114,9 +114,13 @@ class RoastFragment : Fragment() {
         }
 
         binding.btnReset.setOnClickListener {
+            val msg = if (viewModel.isSessionActive())
+                "This will discard the current roast and all detected crack events."
+            else
+                "Clear the timer and start fresh."
             MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Reset roast?")
-                .setMessage("This will discard the current roast and clear all detected crack events.")
+                .setTitle("Reset?")
+                .setMessage(msg)
                 .setPositiveButton("Reset") { _, _ -> viewModel.onResetRoast(requireContext()) }
                 .setNegativeButton(R.string.cancel, null)
                 .show()
@@ -196,8 +200,10 @@ class RoastFragment : Fragment() {
                 }
 
                 launch {
-                    viewModel.isPaused.collect { paused ->
-                        binding.btnPauseResume.text = if (paused) "Resume" else "Pause"
+                    combine(viewModel.phase, viewModel.sessionTimerMs) { phase, ms ->
+                        phase != RoastPhase.IDLE || ms > 0L
+                    }.collect { showReset ->
+                        binding.btnReset.visibility = if (showReset) View.VISIBLE else View.GONE
                     }
                 }
 
@@ -301,7 +307,6 @@ class RoastFragment : Fragment() {
         val isActive = phase != RoastPhase.IDLE
         binding.btnStart.visibility = if (isActive) View.GONE else View.VISIBLE
         binding.btnGroupActive.visibility = if (isActive) View.VISIBLE else View.GONE
-        binding.btnReset.visibility = if (isActive) View.VISIBLE else View.GONE
         binding.btnPauseResume.text = if (paused) "Resume" else "Pause"
     }
 

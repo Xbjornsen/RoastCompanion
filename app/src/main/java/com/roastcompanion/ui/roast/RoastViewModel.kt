@@ -74,6 +74,7 @@ class RoastViewModel @Inject constructor(
 
     private var currentSessionId = -1L
     private var sessionStartMs = 0L
+    private var pausedAtMs = 0L
     private var timerJob: Job? = null
     private var carryoverJob: Job? = null
     private var isSessionActive = false
@@ -110,14 +111,16 @@ class RoastViewModel @Inject constructor(
     fun onStartRoast(context: Context) {
         if (isSessionActive) return
         isSessionActive = true
+        // Clear UI immediately so stale values don't flash
+        _sessionTimerMs.value = 0L
+        _fcStartMs.value = null
+        _fcEndMs.value = null
+        _scDetectedMs.value = null
+        _carryoverState.value = null
 
         viewModelScope.launch {
             sessionStartMs = System.currentTimeMillis()
             currentSessionId = repository.createSession(sessionStartMs)
-            _fcStartMs.value = null
-            _fcEndMs.value = null
-            _scDetectedMs.value = null
-            _carryoverState.value = null
             startTimer()
         }
 
@@ -176,17 +179,26 @@ class RoastViewModel @Inject constructor(
 
     fun onPauseRoast() {
         if (!isSessionActive || audioAnalyzer.isPaused.value) return
+        pausedAtMs = _sessionTimerMs.value
+        timerJob?.cancel()
         audioAnalyzer.pauseSession()
     }
 
     fun onResumeRoast() {
         if (!isSessionActive || !audioAnalyzer.isPaused.value) return
         audioAnalyzer.resumeSession()
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            val resumeWallMs = System.currentTimeMillis()
+            val offset = pausedAtMs
+            while (true) {
+                _sessionTimerMs.value = offset + (System.currentTimeMillis() - resumeWallMs)
+                delay(500)
+            }
+        }
     }
 
     fun onResetRoast(context: Context) {
-        if (!isSessionActive) return
-        isSessionActive = false
         timerJob?.cancel()
         carryoverJob?.cancel()
         _sessionTimerMs.value = 0L
@@ -194,12 +206,16 @@ class RoastViewModel @Inject constructor(
         _fcEndMs.value = null
         _scDetectedMs.value = null
 
-        viewModelScope.launch {
-            if (currentSessionId >= 0) repository.deleteSession(currentSessionId)
+        if (isSessionActive) {
+            viewModelScope.launch {
+                if (currentSessionId >= 0) repository.deleteSession(currentSessionId)
+            }
+            context.startService(RoastMonitorService.stopIntent(context))
         }
 
-        context.startService(RoastMonitorService.stopIntent(context))
+        isSessionActive = false
         currentSessionId = -1L
+        audioAnalyzer.stopSession()
     }
 
     fun isSessionActive(): Boolean = isSessionActive
