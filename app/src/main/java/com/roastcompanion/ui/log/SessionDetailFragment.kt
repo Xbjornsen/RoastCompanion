@@ -33,6 +33,8 @@ class SessionDetailFragment : Fragment() {
     private var notesLoaded = false
     private var tempsLoaded = false
     private var beanLoaded = false
+    private var nameLoaded = false
+    private var weightLoaded = false
     private var lastTempUnit: Boolean? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -61,7 +63,10 @@ class SessionDetailFragment : Fragment() {
             star.setOnClickListener { viewModel.setRating(i + 1) }
         }
 
-        // Temp fields: save on focus lost, converting to °C if needed
+        binding.etRoastName.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) viewModel.setRoastName(binding.etRoastName.text.toString().trim())
+        }
+
         binding.etFcStartTemp.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) saveTempField(binding.etFcStartTemp.text.toString()) { viewModel.setFcStartTemp(it) }
         }
@@ -71,18 +76,30 @@ class SessionDetailFragment : Fragment() {
         binding.etScTemp.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) saveTempField(binding.etScTemp.text.toString()) { viewModel.setScTemp(it) }
         }
+        binding.etChargeTemp.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) saveTempField(binding.etChargeTemp.text.toString()) { viewModel.setChargeTemp(it) }
+        }
 
-        // Bean origin: save on focus lost
         binding.etBeanOrigin.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) saveBeanInfo()
         }
 
-        // Bean type chips
         binding.chipSingleOrigin.setOnClickListener {
             viewModel.setBeanInfo(binding.etBeanOrigin.text.toString(), isBlend = false)
         }
         binding.chipBlend.setOnClickListener {
             viewModel.setBeanInfo(binding.etBeanOrigin.text.toString(), isBlend = true)
+        }
+
+        binding.etGreenWeight.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) saveWeightFields()
+        }
+        binding.etRoastedWeight.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) saveWeightFields()
+        }
+
+        roastLevelChips().forEach { (chip, level) ->
+            chip.setOnClickListener { viewModel.setRoastLevel(level) }
         }
 
         viewModel.loadSession(args.sessionId)
@@ -113,6 +130,12 @@ class SessionDetailFragment : Fragment() {
         viewModel.setBeanInfo(binding.etBeanOrigin.text.toString(), session.isBlend)
     }
 
+    private fun saveWeightFields() {
+        val greenG = binding.etGreenWeight.text.toString().trim().toFloatOrNull()
+        val roastedG = binding.etRoastedWeight.text.toString().trim().toFloatOrNull()
+        viewModel.setWeight(greenG, roastedG)
+    }
+
     private fun bindSession(session: RoastSession, isCelsius: Boolean) {
         binding.tvSessionDate.text = TimeFormatter.formatDate(session.startTimeMs)
         binding.tvStart.text  = "Start     ${TimeFormatter.formatTimestamp(session.startTimeMs)}"
@@ -123,33 +146,57 @@ class SessionDetailFragment : Fragment() {
         binding.tvEnd.text     = "End       ${session.endTimeMs?.let { TimeFormatter.formatTimestamp(it) } ?: "—"}"
         binding.tvTotal.text   = "TOTAL  ${session.totalDurationMs?.let { TimeFormatter.formatDuration(it) } ?: "—"}"
 
+        // Derived stats
+        val fcFromStart = session.firstCrackStartMs?.let { it - session.startTimeMs }
+        binding.tvFcFromStart.text = fcFromStart?.let { TimeFormatter.formatDuration(it) } ?: "—"
+
+        val devTime = if (session.firstCrackEndMs != null && session.endTimeMs != null)
+            session.endTimeMs - session.firstCrackEndMs else null
+        binding.tvDevTime.text = devTime?.let { TimeFormatter.formatDuration(it) } ?: "—"
+
+        val dtr = if (devTime != null && (session.totalDurationMs ?: 0L) > 0)
+            devTime.toFloat() / session.totalDurationMs!! * 100f else null
+        binding.tvDtr.text = dtr?.let { "%.0f%%".format(it) } ?: "—"
+
         if (!notesLoaded) {
             binding.etNotes.setText(session.notes)
             notesLoaded = true
         }
 
-        // Temps: load on first render, and re-render if unit changes
+        if (!nameLoaded) {
+            binding.etRoastName.setText(session.profileName)
+            nameLoaded = true
+        }
+
         val unitChanged = lastTempUnit != isCelsius
         lastTempUnit = isCelsius
         val unitStr = if (isCelsius) "°C" else "°F"
         binding.etFcStartTemp.hint = "—$unitStr"
         binding.etFcEndTemp.hint   = "—$unitStr"
         binding.etScTemp.hint      = "—$unitStr"
+        binding.etChargeTemp.hint  = "—$unitStr"
         if (!tempsLoaded || unitChanged) {
             binding.etFcStartTemp.setText(session.fcStartTempC.displayIn(isCelsius))
             binding.etFcEndTemp.setText(session.fcEndTempC.displayIn(isCelsius))
             binding.etScTemp.setText(session.scTempC.displayIn(isCelsius))
+            binding.etChargeTemp.setText(session.chargeTempC.displayIn(isCelsius))
             tempsLoaded = true
         }
 
-        // Bean info
         if (!beanLoaded) {
             binding.etBeanOrigin.setText(session.beanOrigin)
             beanLoaded = true
         }
         renderBeanTypeChips(session.isBlend)
 
-        // Favourite + rating
+        if (!weightLoaded) {
+            binding.etGreenWeight.setText(session.greenWeightG?.let { "%.0f".format(it) } ?: "")
+            binding.etRoastedWeight.setText(session.roastedWeightG?.let { "%.0f".format(it) } ?: "")
+            weightLoaded = true
+        }
+        renderWeightLoss(session.greenWeightG, session.roastedWeightG)
+        renderRoastLevelChips(session.roastLevel)
+
         val ctx = requireContext()
         val amber = ContextCompat.getColor(ctx, R.color.lab_amber)
         val dim = ContextCompat.getColor(ctx, R.color.lab_text_dim)
@@ -171,6 +218,33 @@ class SessionDetailFragment : Fragment() {
         binding.chipSingleOrigin.setTextColor(if (!isBlend) amber else dim)
         binding.chipBlend.setTextColor(if (isBlend) amber else dim)
     }
+
+    private fun renderRoastLevelChips(selected: String) {
+        val ctx = requireContext()
+        val amber = ContextCompat.getColor(ctx, R.color.lab_amber)
+        val dim = ContextCompat.getColor(ctx, R.color.lab_text_dim)
+        roastLevelChips().forEach { (chip, level) ->
+            chip.setTextColor(if (level == selected) amber else dim)
+        }
+    }
+
+    private fun renderWeightLoss(greenG: Float?, roastedG: Float?) {
+        if (greenG != null && roastedG != null && greenG > 0) {
+            val loss = (1f - roastedG / greenG) * 100f
+            binding.tvWeightLoss.text = "%.1f%%".format(loss)
+        } else {
+            binding.tvWeightLoss.text = "—"
+        }
+    }
+
+    private fun roastLevelChips() = listOf(
+        binding.chipCity to "City",
+        binding.chipCityPlus to "City+",
+        binding.chipFullCity to "Full City",
+        binding.chipFullCityPlus to "Full City+",
+        binding.chipVienna to "Vienna",
+        binding.chipFrench to "French"
+    )
 
     private fun Float?.displayIn(isCelsius: Boolean): String {
         this ?: return ""

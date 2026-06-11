@@ -46,6 +46,7 @@ class RoastViewModel @Inject constructor(
     val isPaused: StateFlow<Boolean>   = audioAnalyzer.isPaused
     val rmsLevel: StateFlow<Float>     = audioAnalyzer.rmsFlow
     val ambientLevel: StateFlow<Float> = audioAnalyzer.ambientRmsFlow
+    val crackCount: StateFlow<Int>     = audioAnalyzer.crackCount
 
     val keepScreenOn: StateFlow<Boolean> = prefs.keepScreenOn
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_KEEP_SCREEN_ON)

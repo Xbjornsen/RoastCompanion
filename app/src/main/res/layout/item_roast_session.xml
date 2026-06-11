@@ -147,7 +147,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="FC DUR"
+                    android:text="FC TIME"
                     android:textColor="@color/lab_text_muted"
                     android:textSize="9sp"
                     android:textStyle="bold"
@@ -171,7 +171,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="PROFILE"
+                    android:text="BEAN"
                     android:textColor="@color/lab_text_muted"
                     android:textSize="9sp"
                     android:textStyle="bold"

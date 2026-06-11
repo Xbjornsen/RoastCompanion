@@ -106,4 +106,28 @@ class RoastRepository @Inject constructor(
             dao.update(it.copy(beanOrigin = origin, isBlend = isBlend))
         }
     }
+
+    suspend fun updateRoastName(id: Long, name: String) {
+        dao.getSessionById(id)?.let {
+            dao.update(it.copy(profileName = name))
+        }
+    }
+
+    suspend fun updateRoastLevel(id: Long, level: String) {
+        dao.getSessionById(id)?.let {
+            dao.update(it.copy(roastLevel = level))
+        }
+    }
+
+    suspend fun updateWeight(id: Long, greenG: Float?, roastedG: Float?) {
+        dao.getSessionById(id)?.let {
+            dao.update(it.copy(greenWeightG = greenG, roastedWeightG = roastedG))
+        }
+    }
+
+    suspend fun updateChargeTemp(id: Long, tempC: Float?) {
+        dao.getSessionById(id)?.let {
+            dao.update(it.copy(chargeTempC = tempC))
+        }
+    }
 }

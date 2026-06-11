@@ -57,6 +57,41 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- ── Roast name card ──────────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_surface"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="NAME"
+                android:textColor="@color/lab_text_muted"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.18"
+                android:layout_marginBottom="10dp" />
+
+            <EditText
+                android:id="@+id/et_roast_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="e.g. Ethiopia Natural — light"
+                android:textColor="@color/lab_text"
+                android:textColorHint="@color/lab_text_dim"
+                android:textSize="14sp"
+                android:background="@drawable/bg_search"
+                android:padding="12dp"
+                android:inputType="textCapWords"
+                android:importantForAutofill="no"
+                android:imeOptions="actionDone"
+                android:singleLine="true" />
+        </LinearLayout>
+
         <!-- ── Timeline card ─────────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -78,6 +113,19 @@
 
             <TextView android:id="@+id/tv_start" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace" />
+
+            <!-- Charge temp: drum temp when beans are loaded -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="8dp">
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:text="Charge"
+                    android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace" />
+                <EditText android:id="@+id/et_charge_temp" android:layout_width="80dp" android:layout_height="wrap_content"
+                    android:hint="—°C" android:textColor="@color/lab_text" android:textColorHint="@color/lab_text_dim"
+                    android:textSize="12sp" android:fontFamily="monospace" android:gravity="end"
+                    android:inputType="numberDecimal" android:background="@null" android:importantForAutofill="no"
+                    android:imeOptions="actionDone" android:paddingVertical="4dp" />
+            </LinearLayout>
 
             <!-- FC Start row with temp field -->
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -128,6 +176,50 @@
 
             <TextView android:id="@+id/tv_total" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textColor="@color/lab_amber" android:textSize="14sp" android:textStyle="bold" android:fontFamily="monospace" />
+
+            <!-- Derived stats: FC@, development time, DTR% -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginTop="12dp">
+
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="FC @"
+                        android:textColor="@color/lab_text_muted" android:textSize="9sp" android:textStyle="bold"
+                        android:letterSpacing="0.1" />
+                    <TextView android:id="@+id/tv_fc_from_start"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="DEV"
+                        android:textColor="@color/lab_text_muted" android:textSize="9sp" android:textStyle="bold"
+                        android:letterSpacing="0.1" />
+                    <TextView android:id="@+id/tv_dev_time"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="DTR"
+                        android:textColor="@color/lab_text_muted" android:textSize="9sp" android:textStyle="bold"
+                        android:letterSpacing="0.1" />
+                    <TextView android:id="@+id/tv_dtr"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="@color/lab_text" android:textSize="13sp" android:fontFamily="monospace"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
 
         <!-- ── Bean info card ────────────────────────────────────────── -->
@@ -192,6 +284,139 @@
                     android:letterSpacing="0.08"
                     android:gravity="center"
                     android:background="@drawable/bg_phase_pill" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ── Batch card — weights + roast level ──────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_surface"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BATCH"
+                android:textColor="@color/lab_text_muted"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.18"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Green → roasted → loss -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="GREEN (g)"
+                        android:textColor="@color/lab_text_muted" android:textSize="9sp"
+                        android:textStyle="bold" android:letterSpacing="0.1" />
+                    <EditText android:id="@+id/et_green_weight"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:hint="—" android:textColor="@color/lab_text" android:textColorHint="@color/lab_text_dim"
+                        android:textSize="18sp" android:fontFamily="monospace"
+                        android:inputType="numberDecimal" android:background="@null"
+                        android:importantForAutofill="no" android:imeOptions="actionNext"
+                        android:paddingVertical="4dp" android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="→"
+                    android:textColor="@color/lab_text_dim"
+                    android:textSize="16sp"
+                    android:paddingHorizontal="12dp" />
+
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="ROASTED (g)"
+                        android:textColor="@color/lab_text_muted" android:textSize="9sp"
+                        android:textStyle="bold" android:letterSpacing="0.1" />
+                    <EditText android:id="@+id/et_roasted_weight"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:hint="—" android:textColor="@color/lab_text" android:textColorHint="@color/lab_text_dim"
+                        android:textSize="18sp" android:fontFamily="monospace"
+                        android:inputType="numberDecimal" android:background="@null"
+                        android:importantForAutofill="no" android:imeOptions="actionDone"
+                        android:paddingVertical="4dp" android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:layout_marginStart="12dp"
+                    android:gravity="center_horizontal">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="LOSS"
+                        android:textColor="@color/lab_text_muted" android:textSize="9sp"
+                        android:textStyle="bold" android:letterSpacing="0.1" />
+                    <TextView android:id="@+id/tv_weight_loss"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="@color/lab_amber" android:textSize="16sp"
+                        android:fontFamily="monospace" android:layout_marginTop="2dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Roast level chips -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ROAST LEVEL"
+                android:textColor="@color/lab_text_muted"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.1"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="6dp">
+                <TextView android:id="@+id/chip_city"
+                    android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1"
+                    android:text="City" android:textSize="9sp" android:textStyle="bold"
+                    android:gravity="center" android:background="@drawable/bg_phase_pill"
+                    android:layout_marginEnd="4dp" />
+                <TextView android:id="@+id/chip_city_plus"
+                    android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1"
+                    android:text="City+" android:textSize="9sp" android:textStyle="bold"
+                    android:gravity="center" android:background="@drawable/bg_phase_pill"
+                    android:layout_marginEnd="4dp" />
+                <TextView android:id="@+id/chip_full_city"
+                    android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1"
+                    android:text="Full City" android:textSize="9sp" android:textStyle="bold"
+                    android:gravity="center" android:background="@drawable/bg_phase_pill" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView android:id="@+id/chip_full_city_plus"
+                    android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1"
+                    android:text="Full City+" android:textSize="9sp" android:textStyle="bold"
+                    android:gravity="center" android:background="@drawable/bg_phase_pill"
+                    android:layout_marginEnd="4dp" />
+                <TextView android:id="@+id/chip_vienna"
+                    android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1"
+                    android:text="Vienna" android:textSize="9sp" android:textStyle="bold"
+                    android:gravity="center" android:background="@drawable/bg_phase_pill"
+                    android:layout_marginEnd="4dp" />
+                <TextView android:id="@+id/chip_french"
+                    android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1"
+                    android:text="French" android:textSize="9sp" android:textStyle="bold"
+                    android:gravity="center" android:background="@drawable/bg_phase_pill" />
             </LinearLayout>
         </LinearLayout>
 

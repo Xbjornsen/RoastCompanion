@@ -47,8 +47,9 @@ class RoastSessionAdapter(
 
             binding.tvTotal.text = session.totalDurationMs
                 ?.let { TimeFormatter.formatDuration(it) } ?: "—"
-            binding.tvFcDur.text = session.firstCrackDurationMs
-                ?.let { TimeFormatter.formatDuration(it) } ?: "—"
+            // FC TIME = elapsed from roast start to first crack start
+            binding.tvFcDur.text = session.firstCrackStartMs
+                ?.let { TimeFormatter.formatDuration(it - session.startTimeMs) } ?: "—"
             binding.tvProfile.text = session.beanOrigin.ifBlank { session.profileName.ifBlank { "—" } }
 
             binding.root.setOnClickListener { onClick(session) }

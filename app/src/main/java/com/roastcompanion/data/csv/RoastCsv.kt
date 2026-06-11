@@ -22,7 +22,8 @@ object RoastCsv {
         "favorite", "rating",
         "profileName", "notes",
         "fcStartTempC", "fcEndTempC", "scTempC",
-        "beanOrigin", "isBlend"
+        "beanOrigin", "isBlend",
+        "roastLevel", "greenWeightG", "roastedWeightG", "chargeTempC"
     )
 
     private fun dateFormat() = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
@@ -50,7 +51,11 @@ object RoastCsv {
                 s.fcEndTempC?.toString() ?: "",
                 s.scTempC?.toString() ?: "",
                 s.beanOrigin,
-                if (s.isBlend) "1" else "0"
+                if (s.isBlend) "1" else "0",
+                s.roastLevel,
+                s.greenWeightG?.toString() ?: "",
+                s.roastedWeightG?.toString() ?: "",
+                s.chargeTempC?.toString() ?: ""
             )
             sb.append(fields.joinToString(",") { escape(it) }).append("\r\n")
         }
@@ -93,7 +98,11 @@ object RoastCsv {
                 fcEndTempC = row.col("fcEndTempC")?.toFloatOrNull(),
                 scTempC = row.col("scTempC")?.toFloatOrNull(),
                 beanOrigin = row.col("beanOrigin") ?: "",
-                isBlend = row.col("isBlend") == "1"
+                isBlend = row.col("isBlend") == "1",
+                roastLevel = row.col("roastLevel") ?: "",
+                greenWeightG = row.col("greenWeightG")?.toFloatOrNull(),
+                roastedWeightG = row.col("roastedWeightG")?.toFloatOrNull(),
+                chargeTempC = row.col("chargeTempC")?.toFloatOrNull()
             )
         }
     }

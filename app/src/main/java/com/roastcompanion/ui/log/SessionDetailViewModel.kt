@@ -90,4 +90,36 @@ class SessionDetailViewModel @Inject constructor(
             _session.value = current.copy(beanOrigin = origin, isBlend = isBlend)
         }
     }
+
+    fun setRoastName(name: String) {
+        val current = _session.value ?: return
+        viewModelScope.launch {
+            repository.updateRoastName(current.id, name)
+            _session.value = current.copy(profileName = name)
+        }
+    }
+
+    fun setRoastLevel(level: String) {
+        val current = _session.value ?: return
+        viewModelScope.launch {
+            repository.updateRoastLevel(current.id, level)
+            _session.value = current.copy(roastLevel = level)
+        }
+    }
+
+    fun setWeight(greenG: Float?, roastedG: Float?) {
+        val current = _session.value ?: return
+        viewModelScope.launch {
+            repository.updateWeight(current.id, greenG, roastedG)
+            _session.value = current.copy(greenWeightG = greenG, roastedWeightG = roastedG)
+        }
+    }
+
+    fun setChargeTemp(tempC: Float?) {
+        val current = _session.value ?: return
+        viewModelScope.launch {
+            repository.updateChargeTemp(current.id, tempC)
+            _session.value = current.copy(chargeTempC = tempC)
+        }
+    }
 }

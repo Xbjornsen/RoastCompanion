@@ -220,6 +220,16 @@ class RoastFragment : Fragment() {
                 launch {
                     viewModel.referenceRoast.collect { renderReference(it) }
                 }
+
+                launch {
+                    combine(viewModel.crackCount, viewModel.phase) { count, phase ->
+                        count to phase
+                    }.collect { (count, phase) ->
+                        binding.tvCrackCount.visibility =
+                            if (phase != RoastPhase.IDLE) View.VISIBLE else View.GONE
+                        binding.tvCrackCount.text = if (count == 1) "1 crack" else "$count cracks"
+                    }
+                }
             }
         }
     }

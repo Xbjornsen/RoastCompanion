@@ -116,6 +116,17 @@
                 android:textSize="11sp"
                 android:letterSpacing="0.1"
                 android:layout_marginTop="6dp" />
+
+            <TextView
+                android:id="@+id/tv_crack_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 cracks"
+                android:textColor="@color/lab_text_dim"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:layout_marginTop="4dp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- ── Reference roast card (latest favourite) ──────────────── -->

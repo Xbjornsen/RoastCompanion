@@ -38,5 +38,11 @@ data class RoastSession(
 
     // v3: bean metadata
     val beanOrigin: String = "",
-    val isBlend: Boolean = false
+    val isBlend: Boolean = false,
+
+    // v4: roast parameters
+    val roastLevel: String = "",        // "City" | "City+" | "Full City" | "Full City+" | "Vienna" | "French"
+    val greenWeightG: Float? = null,    // grams of green coffee charged
+    val roastedWeightG: Float? = null,  // grams of roasted coffee out
+    val chargeTempC: Float? = null      // drum/air temperature when beans drop in
 )

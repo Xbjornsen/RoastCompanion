@@ -132,6 +132,9 @@ class RoastLogFragment : Fragment() {
                 viewModel.deleteSession(session)
                 Snackbar.make(binding.root, R.string.session_deleted, Snackbar.LENGTH_LONG)
                     .setAction(R.string.undo) { viewModel.undoDelete() }
+                    .setBackgroundTint(ContextCompat.getColor(requireContext(), R.color.lab_surface))
+                    .setTextColor(ContextCompat.getColor(requireContext(), R.color.lab_text))
+                    .setActionTextColor(ContextCompat.getColor(requireContext(), R.color.lab_amber))
                     .show()
             }
 

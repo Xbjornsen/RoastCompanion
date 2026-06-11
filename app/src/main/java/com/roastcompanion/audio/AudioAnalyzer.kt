@@ -71,6 +71,9 @@ class AudioAnalyzer @Inject constructor(
     private val _ambientRmsFlow = MutableStateFlow(0f)
     val ambientRmsFlow: StateFlow<Float> = _ambientRmsFlow.asStateFlow()
 
+    private val _crackCount = MutableStateFlow(0)
+    val crackCount: StateFlow<Int> = _crackCount.asStateFlow()
+
     suspend fun loadPreferences() {
         thresholdMultiplier = prefs.thresholdMultiplier.first()
         fcQuietPeriodMs = prefs.fcQuietPeriodS.first() * 1000L
@@ -82,6 +85,7 @@ class AudioAnalyzer @Inject constructor(
     fun startSession() {
         paused = false
         _isPaused.value = false
+        _crackCount.value = 0
         phase = RoastPhase.MONITORING
         sessionStartMs = System.currentTimeMillis()
         fcStartMs = 0L
@@ -192,6 +196,7 @@ class AudioAnalyzer @Inject constructor(
     }
 
     private fun handleTransient(now: Long, isFirstCrackPhase: Boolean) {
+        _crackCount.value++
         val windowMs = if (isFirstCrackPhase) FC_WINDOW_MS else SC_WINDOW_MS
         if (now - transientWindowStartMs > windowMs) {
             // Window expired — this transient starts a fresh window

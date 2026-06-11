@@ -107,6 +107,8 @@ class RoastLogViewModel @Inject constructor(
         if (query.isBlank()) return true
         val q = query.trim()
         return session.profileName.contains(q, ignoreCase = true) ||
+                session.beanOrigin.contains(q, ignoreCase = true) ||
+                session.roastLevel.contains(q, ignoreCase = true) ||
                 session.notes.contains(q, ignoreCase = true)
     }
 }

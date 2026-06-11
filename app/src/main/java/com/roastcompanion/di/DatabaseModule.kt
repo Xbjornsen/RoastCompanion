@@ -36,11 +36,21 @@ object DatabaseModule {
         }
     }
 
+    // v4: roast level, green/roasted weight, charge temperature
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE roast_sessions ADD COLUMN roastLevel TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE roast_sessions ADD COLUMN greenWeightG REAL")
+            db.execSQL("ALTER TABLE roast_sessions ADD COLUMN roastedWeightG REAL")
+            db.execSQL("ALTER TABLE roast_sessions ADD COLUMN chargeTempC REAL")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): RoastDatabase =
         Room.databaseBuilder(context, RoastDatabase::class.java, RoastDatabase.DATABASE_NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
 
     @Provides
