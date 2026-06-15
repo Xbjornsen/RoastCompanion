@@ -76,12 +76,19 @@ class RoastViewModel @Inject constructor(
 
     private val _fcStartMs = MutableStateFlow<Long?>(null)
     val fcStartMs: StateFlow<Long?> = _fcStartMs.asStateFlow()
+    // Elapsed ms into the roast when FC started — shown on the Roast screen
+    private val _fcStartElapsedMs = MutableStateFlow<Long?>(null)
+    val fcStartElapsedMs: StateFlow<Long?> = _fcStartElapsedMs.asStateFlow()
 
     private val _fcEndMs = MutableStateFlow<Long?>(null)
     val fcEndMs: StateFlow<Long?> = _fcEndMs.asStateFlow()
+    private val _fcEndElapsedMs = MutableStateFlow<Long?>(null)
+    val fcEndElapsedMs: StateFlow<Long?> = _fcEndElapsedMs.asStateFlow()
 
     private val _scDetectedMs = MutableStateFlow<Long?>(null)
     val scDetectedMs: StateFlow<Long?> = _scDetectedMs.asStateFlow()
+    private val _scElapsedMs = MutableStateFlow<Long?>(null)
+    val scElapsedMs: StateFlow<Long?> = _scElapsedMs.asStateFlow()
 
     // Which crack types the user has manually confirmed this session
     private val _confirmedTypes = MutableStateFlow<Set<String>>(emptySet())
@@ -106,16 +113,19 @@ class RoastViewModel @Inject constructor(
             when (event) {
                 is CrackEvent.FirstCrackStarted -> {
                     _fcStartMs.value = now
+                    _fcStartElapsedMs.value = _sessionTimerMs.value
                     if (currentSessionId >= 0) repository.updateFirstCrackStart(currentSessionId, now)
                     _alerts.emit(RoastAlert.FirstCrackDetected)
                 }
                 is CrackEvent.FirstCrackEnded -> {
                     _fcEndMs.value = now
+                    _fcEndElapsedMs.value = _sessionTimerMs.value
                     if (currentSessionId >= 0) repository.updateFirstCrackEnd(currentSessionId, now, event.durationMs)
                     _alerts.emit(RoastAlert.FirstCrackComplete)
                 }
                 is CrackEvent.SecondCrackStarted -> {
                     _scDetectedMs.value = now
+                    _scElapsedMs.value = _sessionTimerMs.value
                     if (currentSessionId >= 0) repository.updateSecondCrack(currentSessionId, now)
                     _alerts.emit(RoastAlert.SecondCrackDetected)
                 }
@@ -130,9 +140,9 @@ class RoastViewModel @Inject constructor(
         sessionStartMs = startMs
         // Clear UI immediately so stale values don't flash
         _sessionTimerMs.value = 0L
-        _fcStartMs.value = null
-        _fcEndMs.value = null
-        _scDetectedMs.value = null
+        _fcStartMs.value = null;      _fcStartElapsedMs.value = null
+        _fcEndMs.value = null;        _fcEndElapsedMs.value = null
+        _scDetectedMs.value = null;   _scElapsedMs.value = null
         _carryoverState.value = null
         _confirmedTypes.value = emptySet()
 
@@ -287,9 +297,9 @@ class RoastViewModel @Inject constructor(
         timerJob?.cancel()
         carryoverJob?.cancel()
         _sessionTimerMs.value = 0L
-        _fcStartMs.value = null
-        _fcEndMs.value = null
-        _scDetectedMs.value = null
+        _fcStartMs.value = null;     _fcStartElapsedMs.value = null
+        _fcEndMs.value = null;       _fcEndElapsedMs.value = null
+        _scDetectedMs.value = null;  _scElapsedMs.value = null
 
         if (isSessionActive) {
             viewModelScope.launch {
@@ -335,15 +345,18 @@ class RoastViewModel @Inject constructor(
                 when (crackType) {
                     "FC_START" -> if (_fcStartMs.value == null) {
                         _fcStartMs.value = confirmedMs
+                        _fcStartElapsedMs.value = elapsedMs
                         repository.updateFirstCrackStart(sessionId, confirmedMs)
                     }
                     "FC_END" -> if (_fcEndMs.value == null) {
                         _fcEndMs.value = confirmedMs
+                        _fcEndElapsedMs.value = elapsedMs
                         val dur = confirmedMs - (_fcStartMs.value ?: confirmedMs)
                         repository.updateFirstCrackEnd(sessionId, confirmedMs, dur)
                     }
                     "SC_START" -> if (_scDetectedMs.value == null) {
                         _scDetectedMs.value = confirmedMs
+                        _scElapsedMs.value = elapsedMs
                         repository.updateSecondCrack(sessionId, confirmedMs)
                     }
                 }

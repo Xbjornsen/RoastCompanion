@@ -121,7 +121,12 @@ class RoastFragment : Fragment() {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Reset?")
                 .setMessage(msg)
-                .setPositiveButton("Reset") { _, _ -> viewModel.onResetRoast(requireContext()) }
+                .setPositiveButton("Reset") { _, _ ->
+                    rmsHistory.clear()
+                    binding.chartLevel.clear()
+                    binding.chartLevel.invalidate()
+                    viewModel.onResetRoast(requireContext())
+                }
                 .setNegativeButton(R.string.cancel, null)
                 .show()
         }
@@ -160,21 +165,21 @@ class RoastFragment : Fragment() {
                 }
 
                 launch {
-                    viewModel.fcStartMs.collect { ms ->
-                        binding.tvFcStart.text = ms?.let { TimeFormatter.formatTimestamp(it) }
+                    viewModel.fcStartElapsedMs.collect { ms ->
+                        binding.tvFcStart.text = ms?.let { TimeFormatter.formatElapsed(it) }
                             ?: getString(R.string.not_detected)
                     }
                 }
 
                 launch {
-                    viewModel.fcEndMs.collect { ms ->
-                        binding.tvFcEnd.text = ms?.let { TimeFormatter.formatTimestamp(it) }
+                    viewModel.fcEndElapsedMs.collect { ms ->
+                        binding.tvFcEnd.text = ms?.let { TimeFormatter.formatElapsed(it) }
                             ?: getString(R.string.not_detected)
                     }
                 }
 
                 launch {
-                    combine(viewModel.fcStartMs, viewModel.fcEndMs) { start, end ->
+                    combine(viewModel.fcStartElapsedMs, viewModel.fcEndElapsedMs) { start, end ->
                         if (start != null && end != null) TimeFormatter.formatDuration(end - start)
                         else getString(R.string.not_detected)
                     }.collect { text ->
@@ -183,8 +188,8 @@ class RoastFragment : Fragment() {
                 }
 
                 launch {
-                    viewModel.scDetectedMs.collect { ms ->
-                        binding.tvScDetected.text = ms?.let { TimeFormatter.formatTimestamp(it) }
+                    viewModel.scElapsedMs.collect { ms ->
+                        binding.tvScDetected.text = ms?.let { TimeFormatter.formatElapsed(it) }
                             ?: getString(R.string.not_detected)
                     }
                 }
@@ -433,11 +438,10 @@ class RoastFragment : Fragment() {
                     ContextCompat.getColor(ctx, R.color.lab_red))
                 vibrate(longArrayOf(0, 500, 200, 500, 200, 500))
                 playAlarm()
-                Snackbar.make(binding.root, R.string.alert_sc_detected, Snackbar.LENGTH_INDEFINITE)
-                    .setAction(R.string.action_start_cooling) {
-                        viewModel.onStartCooling(ctx)
-                        findNavController().navigate(R.id.carryoverFragment)
-                    }.show()
+                // Action is dismiss-only; "Start cooling" button on screen is already enabled
+                val snack = Snackbar.make(binding.root, R.string.alert_sc_detected, Snackbar.LENGTH_INDEFINITE)
+                snack.setAction("Dismiss") { snack.dismiss() }
+                snack.show()
             }
         }
     }
@@ -497,6 +501,9 @@ class RoastFragment : Fragment() {
     }
 
     private fun startRoast() {
+        rmsHistory.clear()
+        binding.chartLevel.clear()
+        binding.chartLevel.invalidate()
         viewModel.onStartRoast(requireContext())
     }
 
