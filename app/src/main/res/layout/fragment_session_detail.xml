@@ -590,5 +590,18 @@
                 android:layout_marginTop="12dp" />
         </LinearLayout>
 
+        <!-- ── Training data share ──────────────────────────────────── -->
+        <Button
+            android:id="@+id/btn_share_training"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Share training recording"
+            android:textColor="@color/lab_text_muted"
+            android:textSize="13sp"
+            android:background="@drawable/bg_btn_ghost"
+            android:stateListAnimator="@null"
+            android:layout_marginTop="12dp"
+            android:visibility="gone" />
+
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

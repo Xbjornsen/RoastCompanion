@@ -1,11 +1,13 @@
 package com.roastcompanion.ui.log
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -21,6 +23,7 @@ import com.roastcompanion.util.TimeFormatter
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.io.File
 
 @AndroidEntryPoint
 class SessionDetailFragment : Fragment() {
@@ -46,6 +49,7 @@ class SessionDetailFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.btnBack.setOnClickListener { findNavController().navigateUp() }
+        binding.btnShareTraining.setOnClickListener { shareTrainingData() }
 
         binding.btnSaveNotes.setOnClickListener {
             viewModel.saveNotes(binding.etNotes.text.toString())
@@ -196,6 +200,7 @@ class SessionDetailFragment : Fragment() {
         }
         renderWeightLoss(session.greenWeightG, session.roastedWeightG)
         renderRoastLevelChips(session.roastLevel)
+        renderTrainingButton(session.startTimeMs)
 
         val ctx = requireContext()
         val amber = ContextCompat.getColor(ctx, R.color.lab_amber)
@@ -254,6 +259,38 @@ class SessionDetailFragment : Fragment() {
     private fun starViews() = listOf(
         binding.star1, binding.star2, binding.star3, binding.star4, binding.star5
     )
+
+    private fun renderTrainingButton(startTimeMs: Long) {
+        val dir = requireContext().getExternalFilesDir("training")
+        val wav = dir?.let { File(it, "training_$startTimeMs.wav") }
+        binding.btnShareTraining.visibility =
+            if (wav?.exists() == true) View.VISIBLE else View.GONE
+    }
+
+    private fun shareTrainingData() {
+        val session = viewModel.session.value ?: return
+        val ctx = requireContext()
+        val dir = ctx.getExternalFilesDir("training") ?: return
+        val authority = "${ctx.packageName}.fileprovider"
+
+        val files = listOf(
+            File(dir, "training_${session.startTimeMs}.wav"),
+            File(dir, "training_${session.startTimeMs}.json")
+        ).filter { it.exists() }
+
+        if (files.isEmpty()) {
+            Snackbar.make(binding.root, "Training files not found", Snackbar.LENGTH_SHORT).show()
+            return
+        }
+
+        val uris = ArrayList(files.map { FileProvider.getUriForFile(ctx, authority, it) })
+        val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "*/*"
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, "Share training data"))
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()

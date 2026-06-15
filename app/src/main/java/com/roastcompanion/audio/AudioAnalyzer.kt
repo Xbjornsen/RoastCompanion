@@ -1,6 +1,7 @@
 package com.roastcompanion.audio
 
 import android.media.AudioFormat
+import android.util.Log
 import com.roastcompanion.data.preferences.UserPreferences
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ class AudioAnalyzer @Inject constructor(
     private val prefs: UserPreferences
 ) {
     companion object {
+        private const val TAG = "RC"
         const val SAMPLE_RATE = 44100
         const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
         const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
@@ -38,6 +40,33 @@ class AudioAnalyzer @Inject constructor(
     }
 
     private val spectralGate = SpectralGate()
+
+    // ---- Frame look-back buffer (last 10 seconds at 20fps = 200 entries) ----
+    // Written on the IO thread; read from the Main thread via peakRmsRatioInLastSeconds().
+    private data class FrameSnapshot(val timestampMs: Long, val rmsRatio: Float)
+    private val frameBuffer = ArrayDeque<FrameSnapshot>(200)
+    private val bufferLock = Any()
+
+    private fun recordFrame(now: Long, rms: Float) {
+        val ambient = detector.ambientRms.coerceAtLeast(1f)
+        val ratio = rms / ambient
+        synchronized(bufferLock) {
+            if (frameBuffer.size >= 200) frameBuffer.removeFirst()
+            frameBuffer.addLast(FrameSnapshot(now, ratio))
+        }
+    }
+
+    /**
+     * Returns the highest rms/ambient ratio seen in the last [windowMs] milliseconds.
+     * Called from the Main thread when the user confirms a crack event — gives a
+     * retrospective reading of how loud the crack was relative to the ambient floor.
+     */
+    fun peakRmsRatioInLastSeconds(windowMs: Long = 5_000L): Float {
+        val cutoff = System.currentTimeMillis() - windowMs
+        return synchronized(bufferLock) {
+            frameBuffer.filter { it.timestampMs >= cutoff }.maxOfOrNull { it.rmsRatio } ?: 0f
+        }
+    }
 
     // ---- Settings (updated from prefs before each session) ----
     @Volatile var thresholdMultiplier: Float = UserPreferences.DEFAULT_THRESHOLD_MULTIPLIER
@@ -74,6 +103,16 @@ class AudioAnalyzer @Inject constructor(
     private val _crackCount = MutableStateFlow(0)
     val crackCount: StateFlow<Int> = _crackCount.asStateFlow()
 
+    // Diagnostic: updated whenever the amplitude gate fires so the UI can show
+    // live gate state without a laptop + logcat.
+    // amplitudeRatio = rms/ambient of the last amplitude-gate-passing frame.
+    // spectralRatio  = spectral ratio of that same frame (< CRACK_BAND_MIN_RATIO = failed).
+    private val _diagAmplitudeRatio = MutableStateFlow(0f)
+    val diagAmplitudeRatio: StateFlow<Float> = _diagAmplitudeRatio.asStateFlow()
+
+    private val _diagSpectralRatio = MutableStateFlow(0f)
+    val diagSpectralRatio: StateFlow<Float> = _diagSpectralRatio.asStateFlow()
+
     suspend fun loadPreferences() {
         thresholdMultiplier = prefs.thresholdMultiplier.first()
         fcQuietPeriodMs = prefs.fcQuietPeriodS.first() * 1000L
@@ -86,6 +125,9 @@ class AudioAnalyzer @Inject constructor(
         paused = false
         _isPaused.value = false
         _crackCount.value = 0
+        _diagAmplitudeRatio.value = 0f
+        _diagSpectralRatio.value = 0f
+        synchronized(bufferLock) { frameBuffer.clear() }
         phase = RoastPhase.MONITORING
         sessionStartMs = System.currentTimeMillis()
         fcStartMs = 0L
@@ -134,6 +176,7 @@ class AudioAnalyzer @Inject constructor(
         if (paused) return
         val now = System.currentTimeMillis()
         val rms = detector.computeRms(samples, count)
+        recordFrame(now, rms)
         _rmsFlow.value = rms
         _ambientRmsFlow.value = detector.ambientRms
 
@@ -143,8 +186,11 @@ class AudioAnalyzer @Inject constructor(
                     // Time gate: first crack physically cannot happen this
                     // early in a CBR-101 roast. Ignore the spike entirely —
                     // and don't let it inflate the ambient estimate either.
-                    if (now - sessionStartMs >= minFcTimeMs) {
+                    val elapsed = now - sessionStartMs
+                    if (elapsed >= minFcTimeMs) {
                         handleTransient(now, isFirstCrackPhase = true)
+                    } else {
+                        Log.d(TAG, "CRACK blocked by time gate: ${elapsed / 1000}s < ${minFcTimeMs / 1000}s")
                     }
                 } else {
                     detector.updateAmbient(rms)
@@ -189,10 +235,22 @@ class AudioAnalyzer @Inject constructor(
      *  2. Spectrum — energy concentrated in the 2–9 kHz crack band,
      *     which rejects voices, thuds, and low-frequency noise that
      *     happen to be loud.
+     *
+     * Logs every amplitude-gate pass so logcat can be used to diagnose
+     * which gate is blocking detection: `adb logcat -s RC`
      */
     private fun isCrackTransient(samples: ShortArray, count: Int, rms: Float): Boolean {
         if (!detector.isTransient(rms, thresholdMultiplier)) return false
-        return spectralGate.isCrackLike(samples, count)
+        val ampRatio = rms / detector.ambientRms.coerceAtLeast(1f)
+        val specRatio = spectralGate.crackBandRatio(samples, count)
+        _diagAmplitudeRatio.value = ampRatio
+        _diagSpectralRatio.value = specRatio
+        val pass = specRatio >= SpectralGate.CRACK_BAND_MIN_RATIO
+        Log.d(TAG, "AMP PASS rms=${rms.toInt()} amb=${detector.ambientRms.toInt()} " +
+            "×${"%.1f".format(ampRatio)} " +
+            "spec=${"%.3f".format(specRatio)}/${SpectralGate.CRACK_BAND_MIN_RATIO} " +
+            if (pass) "CRACK ✓" else "spec-fail ✗")
+        return pass
     }
 
     private fun handleTransient(now: Long, isFirstCrackPhase: Boolean) {
@@ -206,6 +264,9 @@ class AudioAnalyzer @Inject constructor(
         transientCountInWindow++
 
         val required = if (isFirstCrackPhase) minTransientsFc else minTransientsSc
+        val spanMs = now - transientWindowStartMs
+        Log.d(TAG, "TRANSIENT phase=$phase count=$transientCountInWindow/$required span=${spanMs}ms window=${windowMs}ms")
+
         if (transientCountInWindow >= required) {
             when {
                 isFirstCrackPhase && phase == RoastPhase.MONITORING -> {
@@ -213,17 +274,21 @@ class AudioAnalyzer @Inject constructor(
                     // A real first crack rolls for 30s+; a burst of clicks
                     // in a couple of seconds doesn't qualify — keep waiting
                     // for more evidence inside the window.
-                    if (now - transientWindowStartMs >= FC_MIN_SPAN_MS) {
+                    if (spanMs >= FC_MIN_SPAN_MS) {
                         fcStartMs = transientWindowStartMs
                         fcLastTransientMs = now
                         transitionTo(RoastPhase.FIRST_CRACK_ACTIVE)
                         _eventFlow.tryEmit(CrackEvent.FirstCrackStarted)
+                        Log.d(TAG, "FC CONFIRMED after ${(now - sessionStartMs) / 1000}s")
                         resetTransientWindow(now)
+                    } else {
+                        Log.d(TAG, "FC count=$transientCountInWindow/$required but span too short: ${spanMs}ms < ${FC_MIN_SPAN_MS}ms — waiting")
                     }
                 }
                 !isFirstCrackPhase && phase == RoastPhase.FIRST_CRACK_COMPLETE -> {
                     transitionTo(RoastPhase.SECOND_CRACK_ACTIVE)
                     _eventFlow.tryEmit(CrackEvent.SecondCrackStarted)
+                    Log.d(TAG, "SC CONFIRMED after ${(now - sessionStartMs) / 1000}s")
                     resetTransientWindow(now)
                 }
             }

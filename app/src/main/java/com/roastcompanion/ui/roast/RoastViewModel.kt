@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.roastcompanion.audio.AudioAnalyzer
 import com.roastcompanion.audio.CrackEvent
 import com.roastcompanion.audio.RoastPhase
+import com.roastcompanion.data.db.entity.CrackConfirmation
 import com.roastcompanion.data.db.entity.RoastSession
 import com.roastcompanion.data.preferences.UserPreferences
 import com.roastcompanion.data.repository.RoastRepository
@@ -13,6 +14,8 @@ import com.roastcompanion.model.CarryoverState
 import com.roastcompanion.model.CookingCarryover
 import com.roastcompanion.service.RoastMonitorService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -25,6 +28,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 
 sealed class RoastAlert {
@@ -35,7 +40,7 @@ sealed class RoastAlert {
 
 @HiltViewModel
 class RoastViewModel @Inject constructor(
-    // AudioAnalyzer is @Singleton — same instance that the Service uses
+    @ApplicationContext private val appContext: Context,
     private val audioAnalyzer: AudioAnalyzer,
     private val repository: RoastRepository,
     private val prefs: UserPreferences
@@ -46,10 +51,15 @@ class RoastViewModel @Inject constructor(
     val isPaused: StateFlow<Boolean>   = audioAnalyzer.isPaused
     val rmsLevel: StateFlow<Float>     = audioAnalyzer.rmsFlow
     val ambientLevel: StateFlow<Float> = audioAnalyzer.ambientRmsFlow
-    val crackCount: StateFlow<Int>     = audioAnalyzer.crackCount
+    val crackCount: StateFlow<Int>      = audioAnalyzer.crackCount
+    val diagAmpRatio: StateFlow<Float>  = audioAnalyzer.diagAmplitudeRatio
+    val diagSpecRatio: StateFlow<Float> = audioAnalyzer.diagSpectralRatio
 
     val keepScreenOn: StateFlow<Boolean> = prefs.keepScreenOn
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_KEEP_SCREEN_ON)
+
+    val recordForTraining: StateFlow<Boolean> = prefs.recordForTraining
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_RECORD_FOR_TRAINING)
 
     /** Latest favourited roast — live reference targets during a roast. */
     val referenceRoast: StateFlow<RoastSession?> = repository.getLatestFavorite()
@@ -72,6 +82,10 @@ class RoastViewModel @Inject constructor(
 
     private val _scDetectedMs = MutableStateFlow<Long?>(null)
     val scDetectedMs: StateFlow<Long?> = _scDetectedMs.asStateFlow()
+
+    // Which crack types the user has manually confirmed this session
+    private val _confirmedTypes = MutableStateFlow<Set<String>>(emptySet())
+    val confirmedTypes: StateFlow<Set<String>> = _confirmedTypes.asStateFlow()
 
     private var currentSessionId = -1L
     private var sessionStartMs = 0L
@@ -112,20 +126,24 @@ class RoastViewModel @Inject constructor(
     fun onStartRoast(context: Context) {
         if (isSessionActive) return
         isSessionActive = true
+        val startMs = System.currentTimeMillis()
+        sessionStartMs = startMs
         // Clear UI immediately so stale values don't flash
         _sessionTimerMs.value = 0L
         _fcStartMs.value = null
         _fcEndMs.value = null
         _scDetectedMs.value = null
         _carryoverState.value = null
+        _confirmedTypes.value = emptySet()
 
         viewModelScope.launch {
-            sessionStartMs = System.currentTimeMillis()
-            currentSessionId = repository.createSession(sessionStartMs)
+            val doRecord = prefs.recordForTraining.first()
+            currentSessionId = repository.createSession(startMs)
             startTimer()
+            context.startForegroundService(
+                RoastMonitorService.startIntent(context, startMs, doRecord)
+            )
         }
-
-        context.startForegroundService(RoastMonitorService.startIntent(context))
     }
 
     fun onStopRoast(context: Context) {
@@ -134,14 +152,80 @@ class RoastViewModel @Inject constructor(
         timerJob?.cancel()
         carryoverJob?.cancel()
 
+        val sid        = currentSessionId
+        val startMs    = sessionStartMs
+        val fcStartMs  = _fcStartMs.value
+        val fcEndMs    = _fcEndMs.value
+        val scStartMs  = _scDetectedMs.value
+        val doRecord   = recordForTraining.value
+
         viewModelScope.launch {
-            if (currentSessionId >= 0) {
-                repository.endSession(currentSessionId, System.currentTimeMillis(), sessionStartMs)
+            if (sid >= 0) {
+                repository.endSession(sid, System.currentTimeMillis(), startMs)
+                if (doRecord) writeTrainingJson(sid, startMs, fcStartMs, fcEndMs, scStartMs)
             }
         }
 
         context.startService(RoastMonitorService.stopIntent(context))
         currentSessionId = -1L
+    }
+
+    private suspend fun writeTrainingJson(
+        sessionId: Long,
+        startMs: Long,
+        fcStartMs: Long?,
+        fcEndMs: Long?,
+        scStartMs: Long?
+    ) {
+        try {
+            val confirmations = repository.getConfirmationsForSession(sessionId)
+            val json = buildTrainingJson(sessionId, startMs, fcStartMs, fcEndMs, scStartMs, confirmations)
+            withContext(Dispatchers.IO) {
+                val dir = appContext.getExternalFilesDir("training")
+                    ?: appContext.filesDir.resolve("training")
+                dir.mkdirs()
+                File(dir, "training_$startMs.json").writeText(json, Charsets.UTF_8)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("RC", "Failed to write training JSON: ${e.message}")
+        }
+    }
+
+    private fun buildTrainingJson(
+        sessionId: Long,
+        startMs: Long,
+        fcStartMs: Long?,
+        fcEndMs: Long?,
+        scStartMs: Long?,
+        confirmations: List<CrackConfirmation>
+    ): String {
+        val confirmedJson = confirmations.joinToString(",\n    ") { c ->
+            """{"type":"${c.crackType}","elapsedMs":${c.elapsedMs},"peakRmsRatio":${"%.3f".format(c.rmsRatio)},"spectralRatio":${"%.3f".format(c.spectralRatio)}}"""
+        }
+
+        val autoFc  = fcStartMs?.let { it - startMs }
+        val autoFcE = fcEndMs?.let   { it - startMs }
+        val autoSc  = scStartMs?.let { it - startMs }
+
+        return """{
+  "version": 1,
+  "sessionId": $sessionId,
+  "startTimeMs": $startMs,
+  "audio": {
+    "filename": "training_$startMs.wav",
+    "sampleRate": ${AudioAnalyzer.SAMPLE_RATE},
+    "channels": 1,
+    "bitsPerSample": 16
+  },
+  "confirmed": [
+    $confirmedJson
+  ],
+  "autoDetected": {
+    "fcStartElapsedMs": ${autoFc ?: "null"},
+    "fcEndElapsedMs": ${autoFcE ?: "null"},
+    "scStartElapsedMs": ${autoSc ?: "null"}
+  }
+}"""
     }
 
     fun onStartCooling(context: Context) {
@@ -216,7 +300,57 @@ class RoastViewModel @Inject constructor(
 
         isSessionActive = false
         currentSessionId = -1L
+        _confirmedTypes.value = emptySet()
         audioAnalyzer.stopSession()
+    }
+
+    /**
+     * Called when the user taps a confirm chip on the Roast screen.
+     * Captures peak audio features from the look-back buffer and persists them
+     * alongside the auto-detected timestamp (null if the app missed it).
+     * If the app missed this event entirely, the confirmed time is also written
+     * back to the session so the log isn't empty.
+     */
+    fun confirmCrack(crackType: String) {
+        val sessionId = currentSessionId
+        val confirmedMs = System.currentTimeMillis()
+        val elapsedMs = _sessionTimerMs.value
+        val rmsRatio = audioAnalyzer.peakRmsRatioInLastSeconds()
+        val spectralRatio = audioAnalyzer.diagSpectralRatio.value
+
+        val autoDetectedMs: Long? = when (crackType) {
+            "FC_START" -> _fcStartMs.value
+            "FC_END"   -> _fcEndMs.value
+            "SC_START" -> _scDetectedMs.value
+            else       -> null
+        }
+
+        viewModelScope.launch {
+            if (sessionId >= 0) {
+                repository.confirmCrack(
+                    sessionId, crackType, confirmedMs, elapsedMs,
+                    autoDetectedMs, rmsRatio, spectralRatio
+                )
+                // Back-fill the session record if the app missed this event
+                when (crackType) {
+                    "FC_START" -> if (_fcStartMs.value == null) {
+                        _fcStartMs.value = confirmedMs
+                        repository.updateFirstCrackStart(sessionId, confirmedMs)
+                    }
+                    "FC_END" -> if (_fcEndMs.value == null) {
+                        _fcEndMs.value = confirmedMs
+                        val dur = confirmedMs - (_fcStartMs.value ?: confirmedMs)
+                        repository.updateFirstCrackEnd(sessionId, confirmedMs, dur)
+                    }
+                    "SC_START" -> if (_scDetectedMs.value == null) {
+                        _scDetectedMs.value = confirmedMs
+                        repository.updateSecondCrack(sessionId, confirmedMs)
+                    }
+                }
+            }
+        }
+
+        _confirmedTypes.value = _confirmedTypes.value + crackType
     }
 
     fun isSessionActive(): Boolean = isSessionActive

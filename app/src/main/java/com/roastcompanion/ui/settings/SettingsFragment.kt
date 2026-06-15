@@ -83,8 +83,14 @@ class SettingsFragment : Fragment() {
         binding.switchKeepScreenOn.setOnCheckedChangeListener { _, checked ->
             if (!updatingFromVm) viewModel.setKeepScreenOn(checked)
         }
+        binding.switchRecordTraining.setOnCheckedChangeListener { _, checked ->
+            if (!updatingFromVm) viewModel.setRecordForTraining(checked)
+        }
         binding.btnResetDefaults.setOnClickListener {
             viewModel.resetDefaults()
+        }
+        binding.btnApplyLearned.setOnClickListener {
+            viewModel.applyLearnedThreshold()
         }
         binding.btnGuide.setOnClickListener {
             findNavController().navigate(R.id.guideFragment)
@@ -181,8 +187,28 @@ class SettingsFragment : Fragment() {
                     }
                 }
                 launch {
+                    viewModel.recordForTraining.collect { v ->
+                        updatingFromVm = true
+                        binding.switchRecordTraining.isChecked = v
+                        updatingFromVm = false
+                    }
+                }
+                launch {
                     viewModel.messages.collect { msg ->
                         Snackbar.make(binding.root, msg, Snackbar.LENGTH_LONG).show()
+                    }
+                }
+
+                launch {
+                    viewModel.learnedThreshold.collect { data ->
+                        if (data == null) {
+                            binding.rowLearnedThreshold.visibility = View.GONE
+                        } else {
+                            val (value, count) = data
+                            binding.rowLearnedThreshold.visibility = View.VISIBLE
+                            binding.tvLearnedThreshold.text =
+                                "Learned from $count cracks: ×${"%.1f".format(value)}"
+                        }
                     }
                 }
                 launch {

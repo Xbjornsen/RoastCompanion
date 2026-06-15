@@ -27,12 +27,13 @@ class UserPreferences @Inject constructor(
         val KEY_MIN_FC_TIME_MIN      = intPreferencesKey("min_fc_time_min")
         val KEY_KEEP_SCREEN_ON       = booleanPreferencesKey("keep_screen_on")
         val KEY_TEMP_UNIT_CELSIUS    = booleanPreferencesKey("temp_unit_celsius")
-        val KEY_ROASTER_PROFILE      = stringPreferencesKey("roaster_profile")
+        val KEY_ROASTER_PROFILE        = stringPreferencesKey("roaster_profile")
+        val KEY_RECORD_FOR_TRAINING    = booleanPreferencesKey("record_for_training")
 
-        const val DEFAULT_THRESHOLD_MULTIPLIER = 2.5f
-        const val DEFAULT_FC_QUIET_PERIOD_S    = 8
+        const val DEFAULT_THRESHOLD_MULTIPLIER = 1.5f
+        const val DEFAULT_FC_QUIET_PERIOD_S    = 12
         const val DEFAULT_CARRYOVER_DURATION_S = 45
-        const val DEFAULT_MIN_TRANSIENTS_FC    = 3
+        const val DEFAULT_MIN_TRANSIENTS_FC    = 2
         const val DEFAULT_MIN_TRANSIENTS_SC    = 2
         const val DEFAULT_ALARM_SOUND_ENABLED  = true
         const val DEFAULT_VIBRATION_ENABLED    = true
@@ -40,6 +41,7 @@ class UserPreferences @Inject constructor(
         const val DEFAULT_KEEP_SCREEN_ON       = true
         const val DEFAULT_TEMP_UNIT_CELSIUS    = true
         const val DEFAULT_ROASTER_PROFILE      = "Gene Cafe CBR-101"
+        const val DEFAULT_RECORD_FOR_TRAINING  = false
     }
 
     val thresholdMultiplier: Flow<Float> = context.dataStore.data.map {
@@ -75,6 +77,9 @@ class UserPreferences @Inject constructor(
     val roasterProfile: Flow<String> = context.dataStore.data.map {
         it[KEY_ROASTER_PROFILE] ?: DEFAULT_ROASTER_PROFILE
     }
+    val recordForTraining: Flow<Boolean> = context.dataStore.data.map {
+        it[KEY_RECORD_FOR_TRAINING] ?: DEFAULT_RECORD_FOR_TRAINING
+    }
 
     suspend fun setThresholdMultiplier(value: Float) {
         context.dataStore.edit { it[KEY_THRESHOLD_MULTIPLIER] = value }
@@ -108,6 +113,9 @@ class UserPreferences @Inject constructor(
     }
     suspend fun setRoasterProfile(value: String) {
         context.dataStore.edit { it[KEY_ROASTER_PROFILE] = value }
+    }
+    suspend fun setRecordForTraining(value: Boolean) {
+        context.dataStore.edit { it[KEY_RECORD_FOR_TRAINING] = value }
     }
     suspend fun resetDefaults() {
         context.dataStore.edit { prefs ->

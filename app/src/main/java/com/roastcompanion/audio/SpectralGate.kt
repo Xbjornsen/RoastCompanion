@@ -35,10 +35,13 @@ class SpectralGate {
         /**
          * Minimum fraction of (150Hz..Nyquist) energy that must fall in
          * the 2–9 kHz band for a frame to count as crack-like.
-         * 0.20 = 20%: passes drum-roaster cracks (0.20–0.35 in practice),
-         * rejects pure low-frequency thuds/bangs (near 0.0).
+         * 0.12 = 12%: passes drum-roaster cracks (empirically 10–25% at mic
+         * distance through drum wall + bean mass), rejects pure low-frequency
+         * motor thuds (near 0.0–0.05). Lowered from 0.20 after live tests
+         * showed first crack was not detected — high-frequency attenuation
+         * through the CBR-101 drum is more severe than modelled.
          */
-        const val CRACK_BAND_MIN_RATIO = 0.20f
+        const val CRACK_BAND_MIN_RATIO = 0.12f
     }
 
     private val real = DoubleArray(FFT_SIZE)

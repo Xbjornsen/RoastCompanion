@@ -131,6 +131,10 @@ class RoastFragment : Fragment() {
             viewModel.onStartCooling(requireContext())
             findNavController().navigate(R.id.carryoverFragment)
         }
+
+        binding.chipConfirmFcStart.setOnClickListener { viewModel.confirmCrack("FC_START") }
+        binding.chipConfirmFcEnd.setOnClickListener   { viewModel.confirmCrack("FC_END") }
+        binding.chipConfirmSc.setOnClickListener      { viewModel.confirmCrack("SC_START") }
     }
 
     private fun observeViewModel() {
@@ -228,6 +232,56 @@ class RoastFragment : Fragment() {
                         binding.tvCrackCount.visibility =
                             if (phase != RoastPhase.IDLE) View.VISIBLE else View.GONE
                         binding.tvCrackCount.text = if (count == 1) "1 crack" else "$count cracks"
+                    }
+                }
+
+                launch {
+                    combine(viewModel.confirmedTypes, viewModel.phase) { confirmed, phase ->
+                        confirmed to phase
+                    }.collect { (confirmed, phase) ->
+                        val active = phase != RoastPhase.IDLE
+                        binding.rowConfirm.visibility = if (active) View.VISIBLE else View.GONE
+                        val amber = ContextCompat.getColor(requireContext(), R.color.lab_amber)
+                        val dim   = ContextCompat.getColor(requireContext(), R.color.lab_text_dim)
+                        binding.chipConfirmFcStart.setTextColor(if ("FC_START" in confirmed) amber else dim)
+                        binding.chipConfirmFcEnd.setTextColor(  if ("FC_END"   in confirmed) amber else dim)
+                        binding.chipConfirmSc.setTextColor(     if ("SC_START" in confirmed) amber else dim)
+                    }
+                }
+
+                launch {
+                    combine(viewModel.recordForTraining, viewModel.phase) { rec, phase ->
+                        rec && phase != RoastPhase.IDLE
+                    }.collect { showRec ->
+                        binding.tvRecIndicator.visibility = if (showRec) View.VISIBLE else View.GONE
+                    }
+                }
+
+                launch {
+                    combine(
+                        viewModel.rmsLevel,
+                        viewModel.ambientLevel,
+                        viewModel.diagAmpRatio,
+                        viewModel.diagSpecRatio,
+                        viewModel.phase
+                    ) { rms: Float, amb: Float, ampEvt: Float, spec: Float, phase: RoastPhase ->
+                        when {
+                            phase == RoastPhase.IDLE -> null
+                            amb < 10f -> "calibrating…"
+                            else -> {
+                                val liveRatio = if (amb > 0f) rms / amb else 0f
+                                val ratioStr = "×${"%.1f".format(liveRatio)}"
+                                if (ampEvt == 0f) ratioStr
+                                else "$ratioStr  spec ${"%.2f".format(spec)}"
+                            }
+                        }
+                    }.collect { text ->
+                        if (text == null) {
+                            binding.tvDiag.visibility = View.GONE
+                        } else {
+                            binding.tvDiag.visibility = View.VISIBLE
+                            binding.tvDiag.text = text
+                        }
                     }
                 }
             }

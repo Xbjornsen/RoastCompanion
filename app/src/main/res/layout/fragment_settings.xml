@@ -227,11 +227,44 @@
                     android:id="@+id/slider_threshold"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:valueFrom="1.5"
+                    android:valueFrom="1.0"
                     android:valueTo="10.0"
                     android:stepSize="0.5"
                     app:labelBehavior="gone"
                     android:layout_marginTop="4dp" />
+
+                <!-- Learned threshold row — visible only when enough confirmed data -->
+                <LinearLayout
+                    android:id="@+id/row_learned_threshold"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="10dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tv_learned_threshold"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textColor="@color/lab_mint"
+                        android:textSize="11sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/btn_apply_learned"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Apply"
+                        android:textColor="@color/lab_mint"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="6dp"
+                        android:background="@drawable/bg_chip"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
             </LinearLayout>
 
             <View
@@ -764,6 +797,61 @@
                         android:gravity="center"
                         android:background="@drawable/bg_phase_pill" />
                 </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ════════ TRAINING ════════ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TRAINING"
+            android:textColor="@color/lab_text_muted"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.18"
+            android:textAllCaps="true"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_surface"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Record roasts for training"
+                        android:textColor="@color/lab_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Saves audio recordings to help train crack detection. ~100 MB per roast."
+                        android:textColor="@color/lab_text_muted"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_record_training"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
             </LinearLayout>
         </LinearLayout>
 

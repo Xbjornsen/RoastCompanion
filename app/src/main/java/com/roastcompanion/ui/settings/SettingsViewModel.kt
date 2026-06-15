@@ -68,6 +68,9 @@ class SettingsViewModel @Inject constructor(
     val keepScreenOn: StateFlow<Boolean> = prefs.keepScreenOn
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_KEEP_SCREEN_ON)
 
+    val recordForTraining: StateFlow<Boolean> = prefs.recordForTraining
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_RECORD_FOR_TRAINING)
+
     val tempUnitCelsius: StateFlow<Boolean> = prefs.tempUnitCelsius
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_TEMP_UNIT_CELSIUS)
 
@@ -82,6 +85,30 @@ class SettingsViewModel @Inject constructor(
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages.asSharedFlow()
 
+    /**
+     * Suggested threshold derived from user-confirmed crack events.
+     * null = not enough data yet (< MIN_CONFIRM_EXAMPLES).
+     * Pair: (suggestedValue, exampleCount).
+     */
+    private val _learnedThreshold = MutableStateFlow<Pair<Float, Int>?>(null)
+    val learnedThreshold: StateFlow<Pair<Float, Int>?> = _learnedThreshold.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val suggested = repository.computeSuggestedThreshold()
+            val count = repository.confirmationCount()
+            _learnedThreshold.value = suggested?.let { it to count }
+        }
+    }
+
+    fun applyLearnedThreshold() {
+        val value = _learnedThreshold.value?.first ?: return
+        viewModelScope.launch {
+            prefs.setThresholdMultiplier(value)
+            _messages.emit("Crack sensitivity updated to ×${"%.1f".format(value)}")
+        }
+    }
+
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
 
@@ -93,8 +120,9 @@ class SettingsViewModel @Inject constructor(
     fun setAlarmSoundEnabled(v: Boolean) { viewModelScope.launch { prefs.setAlarmSoundEnabled(v) } }
     fun setVibrationEnabled(v: Boolean)  { viewModelScope.launch { prefs.setVibrationEnabled(v) } }
     fun setMinFcTimeMin(v: Int)          { viewModelScope.launch { prefs.setMinFcTimeMin(v) } }
-    fun setKeepScreenOn(v: Boolean)      { viewModelScope.launch { prefs.setKeepScreenOn(v) } }
+    fun setKeepScreenOn(v: Boolean)       { viewModelScope.launch { prefs.setKeepScreenOn(v) } }
     fun setTempUnitCelsius(v: Boolean)   { viewModelScope.launch { prefs.setTempUnitCelsius(v) } }
+    fun setRecordForTraining(v: Boolean) { viewModelScope.launch { prefs.setRecordForTraining(v) } }
     fun resetDefaults()                  { viewModelScope.launch { prefs.resetDefaults() } }
 
     fun selectRoaster(profile: com.roastcompanion.data.model.RoasterProfile) {

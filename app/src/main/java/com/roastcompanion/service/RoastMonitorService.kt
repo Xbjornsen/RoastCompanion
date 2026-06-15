@@ -8,16 +8,18 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.Binder
 import android.os.IBinder
+import android.util.Log
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.roastcompanion.audio.AudioAnalyzer
-import com.roastcompanion.audio.RoastPhase
+import com.roastcompanion.audio.WavRecorder
 import com.roastcompanion.util.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -28,6 +30,7 @@ class RoastMonitorService : LifecycleService() {
 
     private var audioRecord: AudioRecord? = null
     private var recordingJob: Job? = null
+    private var wavRecorder: WavRecorder? = null
 
     inner class LocalBinder : Binder() {
         fun getService(): RoastMonitorService = this@RoastMonitorService
@@ -49,15 +52,32 @@ class RoastMonitorService : LifecycleService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
-            ACTION_START -> startRecording()
+            ACTION_START -> startRecording(
+                startTimeMs = intent.getLongExtra(EXTRA_START_TIME_MS, 0L),
+                doRecord    = intent.getBooleanExtra(EXTRA_RECORD_FOR_TRAINING, false)
+            )
             ACTION_STOP  -> stopRecording()
         }
         return START_STICKY
     }
 
-    private fun startRecording() {
+    private fun startRecording(startTimeMs: Long, doRecord: Boolean) {
         val notification = notificationHelper.buildRoastNotification()
         startForeground(NotificationHelper.NOTIF_ID_MONITOR, notification)
+
+        if (doRecord && startTimeMs > 0L) {
+            try {
+                val dir = getExternalFilesDir("training") ?: filesDir.resolve("training")
+                dir.mkdirs()
+                val wav = File(dir, "training_$startTimeMs.wav")
+                wavRecorder = WavRecorder(wav, AudioAnalyzer.SAMPLE_RATE)
+                wavRecorder?.open()
+                Log.i("RC", "WAV recording: ${wav.absolutePath}")
+            } catch (e: Exception) {
+                Log.e("RC", "WAV recorder failed to open: ${e.message}")
+                wavRecorder = null
+            }
+        }
 
         val bufferSize = AudioRecord.getMinBufferSize(
             AudioAnalyzer.SAMPLE_RATE,
@@ -86,6 +106,7 @@ class RoastMonitorService : LifecycleService() {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: break
                 if (read > 0) {
                     audioAnalyzer.processBuffer(buffer, read)
+                    wavRecorder?.write(buffer, read)
                 }
             }
         }
@@ -103,6 +124,13 @@ class RoastMonitorService : LifecycleService() {
         audioRecord?.stop()
         audioRecord?.release()
         audioRecord = null
+        try {
+            val bytes = wavRecorder?.close() ?: 0L
+            if (bytes > 0L) Log.i("RC", "WAV saved: ${bytes / 1_048_576} MB")
+        } catch (e: Exception) {
+            Log.e("RC", "Error closing WAV: ${e.message}")
+        }
+        wavRecorder = null
         audioAnalyzer.stopSession()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -117,8 +145,15 @@ class RoastMonitorService : LifecycleService() {
         const val ACTION_START = "com.roastcompanion.START"
         const val ACTION_STOP  = "com.roastcompanion.STOP"
 
-        fun startIntent(context: Context): Intent =
-            Intent(context, RoastMonitorService::class.java).apply { action = ACTION_START }
+        const val EXTRA_START_TIME_MS        = "startTimeMs"
+        const val EXTRA_RECORD_FOR_TRAINING  = "recordForTraining"
+
+        fun startIntent(context: Context, startTimeMs: Long, doRecord: Boolean): Intent =
+            Intent(context, RoastMonitorService::class.java).apply {
+                action = ACTION_START
+                putExtra(EXTRA_START_TIME_MS, startTimeMs)
+                putExtra(EXTRA_RECORD_FOR_TRAINING, doRecord)
+            }
 
         fun stopIntent(context: Context): Intent =
             Intent(context, RoastMonitorService::class.java).apply { action = ACTION_STOP }

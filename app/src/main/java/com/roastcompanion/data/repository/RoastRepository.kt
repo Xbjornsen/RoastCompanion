@@ -1,6 +1,8 @@
 package com.roastcompanion.data.repository
 
+import com.roastcompanion.data.db.CrackConfirmationDao
 import com.roastcompanion.data.db.RoastSessionDao
+import com.roastcompanion.data.db.entity.CrackConfirmation
 import com.roastcompanion.data.db.entity.RoastSession
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -8,7 +10,8 @@ import javax.inject.Singleton
 
 @Singleton
 class RoastRepository @Inject constructor(
-    private val dao: RoastSessionDao
+    private val dao: RoastSessionDao,
+    private val confirmDao: CrackConfirmationDao
 ) {
     fun getAllSessions(): Flow<List<RoastSession>> = dao.getAllSessions()
 
@@ -129,5 +132,54 @@ class RoastRepository @Inject constructor(
         dao.getSessionById(id)?.let {
             dao.update(it.copy(chargeTempC = tempC))
         }
+    }
+
+    // ── Crack confirmation + adaptive learning ────────────────────────────
+
+    suspend fun confirmCrack(
+        sessionId: Long,
+        crackType: String,
+        confirmedMs: Long,
+        elapsedMs: Long,
+        autoDetectedMs: Long?,
+        rmsRatio: Float,
+        spectralRatio: Float
+    ) {
+        confirmDao.insert(
+            CrackConfirmation(
+                sessionId = sessionId,
+                crackType = crackType,
+                confirmedMs = confirmedMs,
+                elapsedMs = elapsedMs,
+                autoDetectedMs = autoDetectedMs,
+                rmsRatio = rmsRatio,
+                spectralRatio = spectralRatio
+            )
+        )
+    }
+
+    /**
+     * Computes a suggested amplitude-gate threshold from all confirmed crack events.
+     * Returns null until [MIN_CONFIRM_EXAMPLES] examples have been collected.
+     *
+     * Method: sort all confirmed rmsRatios ascending, pick the 20th percentile value
+     * and apply a 5% safety margin below it. This catches ~80% of your past cracks
+     * while staying above pure motor noise.
+     */
+    suspend fun computeSuggestedThreshold(): Float? {
+        val count = confirmDao.getCrackStartCount()
+        if (count < MIN_CONFIRM_EXAMPLES) return null
+        val ratios = confirmDao.getAllCrackRmsRatios()   // already sorted ASC by the DAO query
+        val p20idx = (ratios.size * 0.20).toInt().coerceIn(0, ratios.size - 1)
+        return (ratios[p20idx] * 0.95f).coerceAtLeast(1.0f)
+    }
+
+    suspend fun confirmationCount(): Int = confirmDao.getCrackStartCount()
+
+    suspend fun getConfirmationsForSession(sessionId: Long) =
+        confirmDao.getBySession(sessionId)
+
+    companion object {
+        const val MIN_CONFIRM_EXAMPLES = 5
     }
 }
