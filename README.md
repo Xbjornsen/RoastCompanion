@@ -4,6 +4,11 @@ A native Android app for monitoring coffee roasts on the **Gene Cafe CBR-101** d
 
 Built for personal use by an experienced home roaster — no onboarding, no fluff.
 
+> **© 2026 Bjorn Technologies. All rights reserved.** Proprietary and
+> confidential — see [LICENSE](LICENSE). Any public visibility of this
+> repository is for demonstration only and grants no right to use, copy, or
+> distribute the software, algorithms, or trained models.
+
 ---
 
 ## Screenshots
@@ -197,3 +202,11 @@ Releases are built by GitHub Actions on a `vX.Y.Z` tag (signed APK). See `RELEAS
 - The classifier is only as good as its training data and assumes a consistent mic position (exhaust side recommended). Train and roast from the same placement.
 - Carryover is a configurable timer, not a thermometric model.
 - If the OS kills the app under memory pressure, in-progress session data is already persisted incrementally, so logged FC/SC timestamps survive.
+
+---
+
+## License
+
+Proprietary. Copyright © 2026 Bjorn Technologies. All rights reserved. See
+[LICENSE](LICENSE). No use, copying, modification, or distribution without
+written permission.
