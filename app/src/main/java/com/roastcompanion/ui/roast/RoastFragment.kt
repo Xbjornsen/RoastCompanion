@@ -4,6 +4,8 @@ import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
+import android.widget.LinearLayout
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -16,6 +18,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.animation.LinearInterpolator
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
@@ -42,6 +45,12 @@ import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class RoastFragment : Fragment() {
+
+    companion object {
+        // Fallback pacing for the card flood when no reference roast is set.
+        private const val NOMINAL_FC_TO_SC_MS = 150_000f   // ~2.5 min FC→SC
+        private const val NOMINAL_SC_TAIL_MS  = 90_000f    // ~1.5 min SC→pull
+    }
 
     private var _binding: FragmentRoastBinding? = null
     private val binding get() = _binding!!
@@ -131,15 +140,26 @@ class RoastFragment : Fragment() {
                 .show()
         }
 
-        binding.btnStartCooling.setOnClickListener {
-            if (!it.isEnabled) return@setOnClickListener
-            viewModel.onStartCooling(requireContext())
-            findNavController().navigate(R.id.carryoverFragment)
+        binding.btnScDismiss.setOnClickListener { hideScAlert() }
+        binding.btnScCool.setOnClickListener {
+            hideScAlert()
+            startCoolingFlow()
         }
 
         binding.chipConfirmFcStart.setOnClickListener { viewModel.confirmCrack("FC_START") }
         binding.chipConfirmFcEnd.setOnClickListener   { viewModel.confirmCrack("FC_END") }
         binding.chipConfirmSc.setOnClickListener      { viewModel.confirmCrack("SC_START") }
+
+        // Keep the scroll content clear of the pinned action footer, whatever
+        // its current height (it changes as Start ↔ Pause/Stop/Reset swap in).
+        val footerGap = (8 * resources.displayMetrics.density).toInt()
+        binding.actionFooter.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
+            val needed = (bottom - top) + footerGap
+            val sv = binding.scrollRoot
+            if (sv.paddingBottom != needed) {
+                sv.setPadding(sv.paddingLeft, sv.paddingTop, sv.paddingRight, needed)
+            }
+        }
     }
 
     private fun observeViewModel() {
@@ -149,6 +169,7 @@ class RoastFragment : Fragment() {
                 launch {
                     viewModel.sessionTimerMs.collect { ms ->
                         binding.tvTimer.text = TimeFormatter.formatElapsed(ms)
+                        updateProgressBars()
                     }
                 }
 
@@ -168,6 +189,7 @@ class RoastFragment : Fragment() {
                     viewModel.fcStartElapsedMs.collect { ms ->
                         binding.tvFcStart.text = ms?.let { TimeFormatter.formatElapsed(it) }
                             ?: getString(R.string.not_detected)
+                        updateProgressBars()
                     }
                 }
 
@@ -191,6 +213,7 @@ class RoastFragment : Fragment() {
                     viewModel.scElapsedMs.collect { ms ->
                         binding.tvScDetected.text = ms?.let { TimeFormatter.formatElapsed(it) }
                             ?: getString(R.string.not_detected)
+                        updateProgressBars()
                     }
                 }
 
@@ -213,6 +236,7 @@ class RoastFragment : Fragment() {
                         phase != RoastPhase.IDLE || ms > 0L
                     }.collect { showReset ->
                         binding.btnReset.visibility = if (showReset) View.VISIBLE else View.GONE
+                        fixControlRowGaps()
                     }
                 }
 
@@ -321,6 +345,97 @@ class RoastFragment : Fragment() {
         return if (diff < 0) "$dur earlier than your reference" else "$dur later than your reference"
     }
 
+    /**
+     * Floods the FC / SC cards as the roast progresses.
+     *  - FC card: empty until first crack fires, then fills across the FC→SC
+     *    stretch, locking full when second crack fires.
+     *  - SC card: empty until second crack fires, then fills toward the usual
+     *    pull/cooling point — you generally pull before it tops out.
+     * The reference roast (favourite) supplies the pacing; without one, the
+     * nominal gaps below are used so the fill still moves at a sane rate.
+     */
+    private fun updateProgressBars() {
+        val ref = viewModel.referenceRoast.value
+        val now = viewModel.sessionTimerMs.value
+        val refFc   = ref?.firstCrackStartMs?.let { it - ref.startTimeMs }?.takeIf { it > 0 }
+        val refSc   = ref?.secondCrackDetectedMs?.let { it - ref.startTimeMs }?.takeIf { it > 0 }
+        val refCool = ref?.coolingStartedMs?.let { it - ref.startTimeMs }?.takeIf { it > 0 }
+        val fcAt = viewModel.fcStartElapsedMs.value
+        val scAt = viewModel.scElapsedMs.value
+
+        val fcFrac = when {
+            scAt != null -> 1f
+            fcAt != null -> {
+                val gap = if (refFc != null && refSc != null && refSc > refFc) (refSc - refFc).toFloat()
+                          else NOMINAL_FC_TO_SC_MS
+                ((now - fcAt).toFloat() / gap).coerceIn(0f, 1f)
+            }
+            else -> 0f
+        }
+        val scFrac = when {
+            scAt != null -> {
+                val tail = if (refSc != null && refCool != null && refCool > refSc) (refCool - refSc).toFloat()
+                           else NOMINAL_SC_TAIL_MS
+                ((now - scAt).toFloat() / tail).coerceIn(0f, 1f)
+            }
+            else -> 0f
+        }
+        setCardFill(binding.cardFirstCrack, fcFrac)
+        setCardFill(binding.cardSecondCrack, scFrac)
+        updateRoastLevel(now, fcAt, scAt)
+    }
+
+    /**
+     * Live "if you dropped now" roast level, by development time since first
+     * crack (and into second crack). Rough guide for a CBR-101 — tune the
+     * thresholds to taste.
+     */
+    private fun updateRoastLevel(now: Long, fcAt: Long?, scAt: Long?) {
+        val (label, dark) = when {
+            scAt != null ->
+                if (now - scAt < 30_000) "Vienna · dark" to true
+                else "French · very dark" to true
+            fcAt != null -> when (now - fcAt) {
+                in 0 until 75_000      -> "City · light" to false
+                in 75_000 until 135_000 -> "City+ · light-medium" to false
+                in 135_000 until 180_000 -> "Full City · medium" to false
+                else                    -> "Full City+ · medium-dark" to true
+            }
+            else -> null to false
+        }
+        if (label == null) {
+            binding.tvRoastLevel.visibility = View.GONE
+        } else {
+            binding.tvRoastLevel.visibility = View.VISIBLE
+            binding.tvRoastLevel.text = label
+            binding.tvRoastLevel.setTextColor(
+                ContextCompat.getColor(requireContext(),
+                    if (dark) R.color.lab_red else R.color.lab_amber)
+            )
+        }
+    }
+
+    private val fillAnimators = HashMap<Int, ValueAnimator>()
+
+    private fun setCardFill(card: View, fraction: Float) {
+        val clip = (card.background as? LayerDrawable)?.getDrawable(1) ?: return
+        val target = (fraction * 10000).toInt().coerceIn(0, 10000)
+        if (clip.level == target) return
+        fillAnimators[card.id]?.cancel()
+        // Snap large jumps (reset, lock-to-full); smoothly animate the gradual
+        // creep between the 500 ms timer ticks so the fill doesn't step.
+        if (kotlin.math.abs(target - clip.level) > 4000) {
+            clip.level = target
+            return
+        }
+        fillAnimators[card.id] = ValueAnimator.ofInt(clip.level, target).apply {
+            duration = 480L
+            interpolator = LinearInterpolator()
+            addUpdateListener { clip.level = it.animatedValue as Int }
+            start()
+        }
+    }
+
     private fun updatePhaseUi(phase: RoastPhase) {
         val ctx = requireContext()
         binding.tvPhase.text = when (phase) {
@@ -366,17 +481,35 @@ class RoastFragment : Fragment() {
             )
         )
 
-        val coolEnabled = phase == RoastPhase.FIRST_CRACK_COMPLETE ||
-                phase == RoastPhase.SECOND_CRACK_ACTIVE
-        binding.btnStartCooling.isEnabled = coolEnabled
-        binding.btnStartCooling.alpha = if (coolEnabled) 1f else 0.5f
+        // Dismiss the SC alert sheet (and its alarm) on any move away from SC.
+        if (phase != RoastPhase.SECOND_CRACK_ACTIVE &&
+            binding.scAlertSheet.visibility == View.VISIBLE) {
+            hideScAlert()
+        }
     }
 
     private fun updateButtonVisibility(phase: RoastPhase, paused: Boolean) {
         val isActive = phase != RoastPhase.IDLE
         binding.btnStart.visibility = if (isActive) View.GONE else View.VISIBLE
-        binding.btnGroupActive.visibility = if (isActive) View.VISIBLE else View.GONE
+        binding.btnPauseResume.visibility = if (isActive) View.VISIBLE else View.GONE
+        binding.btnStop.visibility = if (isActive) View.VISIBLE else View.GONE
         binding.btnPauseResume.text = if (paused) "Resume" else "Pause"
+        fixControlRowGaps()
+    }
+
+    /** Even 8dp gaps between whichever control-row buttons are currently visible. */
+    private fun fixControlRowGaps() {
+        val row = binding.controlRow
+        val gap = (8 * resources.displayMetrics.density).toInt()
+        val visible = (0 until row.childCount)
+            .map { row.getChildAt(it) }
+            .filter { it.visibility == View.VISIBLE }
+        visible.forEachIndexed { i, v ->
+            (v.layoutParams as LinearLayout.LayoutParams).apply {
+                marginEnd = if (i == visible.lastIndex) 0 else gap
+                v.layoutParams = this
+            }
+        }
     }
 
     private fun updateLevelMeter(rms: Float) {
@@ -438,12 +571,31 @@ class RoastFragment : Fragment() {
                     ContextCompat.getColor(ctx, R.color.lab_red))
                 vibrate(longArrayOf(0, 500, 200, 500, 200, 500))
                 playAlarm()
-                // Action is dismiss-only; "Start cooling" button on screen is already enabled
-                val snack = Snackbar.make(binding.root, R.string.alert_sc_detected, Snackbar.LENGTH_INDEFINITE)
-                snack.setAction("Dismiss") { snack.dismiss() }
-                snack.show()
+                showScAlert()
             }
         }
+    }
+
+    private fun showScAlert() {
+        binding.scAlertSheet.visibility = View.VISIBLE
+    }
+
+    private fun hideScAlert() {
+        stopAlarm()
+        binding.scAlertSheet.visibility = View.GONE
+    }
+
+    private fun startCoolingFlow() {
+        stopAlarm()
+        binding.scAlertSheet.visibility = View.GONE
+        viewModel.onStartCooling(requireContext())
+        findNavController().navigate(R.id.carryoverFragment)
+    }
+
+    private fun stopAlarm() {
+        alarmPlayer?.let { if (it.isPlaying) it.stop() }
+        alarmPlayer?.release()
+        alarmPlayer = null
     }
 
     private fun animateStripeColor(stripe: View, toColor: Int) {
@@ -516,6 +668,8 @@ class RoastFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        fillAnimators.values.forEach { it.cancel() }
+        fillAnimators.clear()
         alarmPlayer?.release()
         alarmPlayer = null
         _binding = null

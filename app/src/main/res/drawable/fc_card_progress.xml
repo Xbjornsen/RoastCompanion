@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Card surface + a horizontal amber "flood" revealed by ClipDrawable level (0–10000). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/bg_card_surface" />
+    <item>
+        <clip
+            android:clipOrientation="horizontal"
+            android:gravity="left">
+            <shape android:shape="rectangle">
+                <gradient
+                    android:startColor="#1AFF9544"
+                    android:endColor="#42FF9544"
+                    android:angle="0" />
+                <corners android:radius="@dimen/card_corner_radius" />
+            </shape>
+        </clip>
+    </item>
+</layer-list>

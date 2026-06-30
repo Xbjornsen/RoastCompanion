@@ -1,6 +1,6 @@
 # RoastCompanion
 
-A native Android app for monitoring coffee roasts on the **Gene Cafe CBR-101** drum roaster. Uses the device microphone and real-time audio analysis to detect first crack and second crack events, alarm you at second crack, and calculate carryover roast development during the CBR-101's cooling cycle.
+A native Android app for monitoring coffee roasts on the **Gene Cafe CBR-101** drum roaster. It listens through the device microphone and uses real-time audio analysis — amplitude, spectral content, **and a small on-device machine-learning classifier** — to detect first crack and second crack, alarm you at second crack, and track the CBR-101's cooling carryover.
 
 Built for personal use by an experienced home roaster — no onboarding, no fluff.
 
@@ -22,86 +22,95 @@ Built for personal use by an experienced home roaster — no onboarding, no fluf
 ## Features
 
 ### Roast Monitoring
-- **Start Roast** begins a session, starts the roast timer, and activates microphone monitoring
-- Real-time **mic level meter** (scrolling bar chart) so you can see the audio environment is being captured
-- Running **session timer** displayed prominently throughout the roast
+- **Start Roast** begins a session, starts the roast timer, and activates microphone monitoring via a foreground service
+- Real-time **mic level meter** (scrolling chart) so you can see the audio environment is being captured
+- Running **session timer** displayed prominently throughout, in elapsed roast-time
+- **Live roast-level indicator** — a pill that shows where you'd land if you dropped now (City → City+ → Full City → Full City+ → Vienna → French) as development progresses
+- Action buttons (Start / Pause / Stop / Reset) are pinned in a fixed footer, always reachable without scrolling
 
-### First Crack Detection
-- Continuously analyses mic input for the sharp transient bursts characteristic of first crack
-- Uses a **rolling RMS noise floor** estimate (lower 70th percentile of the last 5 seconds) so the threshold adapts to your environment — fan noise, ambient hum, and low-frequency roaster rumble are filtered out
-- Requires N transients within a 3-second window before confirming (configurable, default 3) — prevents false positives from single loud events
-- On detection: **visual alert** (amber card animation) + vibration + Snackbar notification
-- Logs **FC start timestamp** to the session
-- Continues monitoring; when a configurable quiet period elapses with no further transients (default 8 seconds), first crack is marked **complete** and the FC end timestamp + duration are logged
+### First & Second Crack Detection
+Detection combines five gates — a frame only counts toward a crack when all agree:
 
-### Second Crack Alarm
-- After first crack completes, monitoring continues with the same detection engine
-- On second crack detection: **loud device alarm** (uses the phone's default alarm sound at alarm volume) + vibration pattern + persistent Snackbar with a "Start Cooling" action
-- Logs **SC detected timestamp**
+1. **Warmup** — the first 3s of a session build the ambient noise floor; nothing detects during warmup
+2. **Amplitude** — RMS must exceed the ambient floor × a sensitivity multiplier
+3. **Spectrum** — an FFT checks that enough energy sits in the 2–9 kHz band where cracks live (rejects voices, fan, thuds)
+4. **ML classifier** — a tiny 3-class TFLite model (ambient / first crack / second crack) decides the crack *type* by sound, not by timing
+5. **Time / pattern gates** — first crack is ignored before a configurable earliest time; confirmation needs several transients spread over time (real crack rolls, not a burst of clicks)
 
-### CBR-101 Carryover Cooling Calculator
-- When **Start Cooling** is tapped, a bottom sheet opens showing a countdown and estimated additional roast development
-- The CBR-101 drum continues tumbling with residual heat after cooling is triggered; beans keep developing for 30–60 seconds depending on roast level
-- Default carryover window: **45 seconds** (configurable 15–120s)
-- Displays estimated roast colour label as the countdown progresses: City+ → Full City → Full City+ → Vienna
-- Circular progress indicator shows remaining fraction
+- First crack logs **start** and (after a sustained quiet period) **end** + duration
+- The roast cards **flood with colour** as progress bars: first crack fills across the FC→SC stretch, second crack fills toward your pull point, paced by your reference roast
+- On second crack: a **loud device alarm** + vibration + a themed **alert sheet** with a big "Silence & dismiss" button
+
+### Crack Classifier & Training Pipeline
+- The classifier is a ~15 KB TFLite model with 15 features per 50 ms frame (13 MFCCs + log-RMS + 2–9 kHz spectral ratio), shipped in `app/src/main/assets/`
+- **Record roasts for training** (Settings → Training, off by default) saves a WAV + a JSON of confirmed crack timestamps per session to the app's external files dir
+- Recordings can be shared from session detail and pulled to a workstation; `training_data/scripts/train.py` labels them, trains the 3-class model, and exports the TFLite + normalization params
+- The model improves with every recorded roast — see [Audio Detection Algorithm](#audio-detection-algorithm)
+
+### Reference Roast
+- Star a roast ★ as a favourite to make it the **reference** — its FC/SC times show as live targets on the Roast screen and set the pacing for the progress bars
+
+### CBR-101 Carryover Cooling
+- "Start cooling" (from the second-crack alert) opens a carryover timer — the CBR-101 keeps developing beans for ~45s after you pull, and this counts it down
 
 ### Roast Log
 - Every session is saved to a local **Room database**
-- Log screen shows all sessions newest-first: date, total duration, FC timestamp, second crack flag
-- Tap any session for a full **timeline detail view**: Start → FC Start → FC End → SC → Cooling Start → End, plus total duration and notes
-- Swipe-to-delete with undo
-- Add freeform **notes** to any session (edit via FAB)
+- Log screen lists sessions newest-first with search, filter, and swipe-to-delete (with undo)
+- Session detail shows the full timeline in **elapsed roast-time** (Start → FC Start → FC End → 2C → Cooling → End), derived stats (development time, DTR), editable notes, a 1–5 cup rating, temperatures, and bean/weight metadata
+- **Autocomplete dropdowns** for roast name, bean, and green weight — pulled from your own past roasts so you don't retype
+- CSV export / import (RFC-4180, dedupes on start time) and Delete All History
 
 ### Settings
-All detection parameters are adjustable in-app via sliders:
-
-| Setting | Default | Range | Description |
-|---|---|---|---|
-| Detection Sensitivity | 3.5× | 1.5–10× | Spike must exceed N × ambient noise floor |
-| FC Quiet Period | 8s | 3–30s | Silence after FC activity before FC is marked complete |
-| Carryover Duration | 45s | 15–120s | Estimated continued development during cooling |
-| Min Transients (FC) | 3 | 1–10 | Transients required in 3s window to confirm first crack |
-| Min Transients (SC) | 2 | 1–5 | Transients required in 3s window to confirm second crack |
-| Alarm Sound | On | — | Play device alarm on second crack |
-| Vibration | On | — | Vibrate on crack events |
+| Setting | Default | Description |
+|---|---|---|
+| Crack Sensitivity | 3.5× | Spike must exceed N × ambient noise floor |
+| Earliest First Crack | 9 min | Cracks ignored before this point — the CBR-101 never reaches FC earlier |
+| FC Quiet Period | 25s | Sustained quiet after FC activity before FC is marked complete |
+| Min Transients (FC) | 2 | Transients required (spread over time) to confirm first crack |
+| Min Transients (SC) | 2 | Transients required to confirm second crack |
+| Record roasts for training | Off | Save WAV + label JSON per roast for model training |
+| Keep Screen Awake | On | Only while a roast is active |
+| Alarm Sound / Vibration | On | Alert on crack events |
 
 ---
 
 ## Audio Detection Algorithm
 
-The detection engine runs entirely on-device with no network dependency.
+The engine runs entirely on-device with no network dependency.
 
-**Capture:** AudioRecord API at 44100 Hz, 16-bit PCM mono. Samples are read in 50ms windows (2205 samples) giving 20 analysis frames per second.
+**Capture:** AudioRecord at 44100 Hz, 16-bit PCM mono, read in 50 ms windows (2205 samples) → 20 analysis frames/second.
 
-**Noise floor:** A rolling deque of the last 100 RMS frames (~5 seconds) is maintained. The ambient estimate uses the **lower 70th percentile** of that window — this excludes crack transients from inflating the baseline, so detection sensitivity doesn't degrade once cracking starts.
+**Noise floor:** a rolling deque of the last 100 RMS frames (~5s); the ambient estimate uses the **lower 70th percentile**, updated only from non-spike frames so cracking doesn't inflate the baseline.
 
-**Transient detection:** A frame is classified as a spike when:
-```
-currentRMS > ambientRMS × thresholdMultiplier
-```
+**Per-frame gates (all must pass):**
+- **Amplitude** — `RMS > ambient × sensitivity`. Second crack is quieter than first, so a lower amplitude bar (1.8×) is used once the app is listening for SC.
+- **Spectral** — a 2048-pt FFT; ≥12% of audible energy must fall in 2–9 kHz (cracks are high-frequency pops; motor/fan/thuds score near zero).
+- **ML classifier** — the surviving frame is run through the 3-class TFLite model; its argmax decides ambient / FC / SC. Because the model judges *type by sound*, a continuing first-crack roll is classified FC and can't be mistaken for second crack.
 
-**Debounce:** A rolling 3-second window counts transients. A phase transition only fires when the window accumulates ≥ N spikes (N = min transients setting). The window resets after each confirmed transition or after 3 seconds of silence. This prevents single loud events (a dropped portafilter, a door slam) from triggering a false positive.
+**Time & pattern gates:**
+- First crack is ignored before **Earliest First Crack** (default 9 min).
+- FC confirmation needs several transients **spread over ≥4s** within a 15s window — a real crack rolls; a burst of clicks doesn't qualify.
+- Second crack can't be declared within **75s** of first crack (a hard floor against the FC-roll-misread-as-SC cascade).
 
 **State machine:**
 ```
-IDLE → [Start Roast] → MONITORING
-MONITORING → [N transients in 3s] → FIRST_CRACK_ACTIVE
+IDLE → [Start] → MONITORING
+MONITORING → [FC-class transients, after earliest-FC time] → FIRST_CRACK_ACTIVE
 FIRST_CRACK_ACTIVE → [quiet period elapsed] → FIRST_CRACK_COMPLETE
-FIRST_CRACK_COMPLETE → [N transients in 3s] → SECOND_CRACK_ACTIVE
-SECOND_CRACK_ACTIVE → [Start Cooling tapped] → COOLING
+FIRST_CRACK_COMPLETE → [SC-class transients, ≥75s after FC] → SECOND_CRACK_ACTIVE
+SECOND_CRACK_ACTIVE → [Start cooling] → COOLING
 ```
 
-The ambient noise floor is only updated from **non-spike frames**, so bursts of crack activity don't raise the threshold and suppress subsequent detections.
+**Training:** the model is trained from real recorded roasts (`training_data/scripts/train.py`). Labels come only from human-verified crack times; the trainer extracts MFCC + RMS + spectral features per frame, class-weights the heavily imbalanced data (ambient ≫ FC ≫ SC), and exports a float TFLite model plus a `feature_norm.json` of per-feature mean/std. The recorded alarm tone is automatically blanked out of the labels so the model never learns its own alarm as a crack.
 
 ---
 
 ## Usage Tips
 
-- **Phone placement:** Hold the phone close to the chaff collector outlet or the front panel of the CBR-101. The chaff collector is enclosed so crack sounds are somewhat muffled — closer is better.
-- **Threshold tuning:** On first use, start a roast session and watch the level meter before beans crack. If the bar chart shows frequent tall spikes just from fan/motor noise, raise the sensitivity multiplier in Settings. If it's very quiet, lower it.
-- **Environment:** A quiet roasting space helps. The CBR-101's motor noise sits mostly in the low-frequency range; the 70th-percentile ambient filter handles steady background noise well but loud music or conversations near the machine can cause false positives — raise min transients to 4–5 in noisy environments.
-- **Second crack:** SC on the CBR-101 is faster and less dramatic than FC. If you've raised the threshold to filter FC ambient noise, you may want to lower min transients for SC (setting: Min Transients SC) so it doesn't miss the first wave.
+- **Phone placement:** the **exhaust side** of the CBR-101 gives the best read — the vent channels crack sound and sits away from the bulk fan roar. Keep the same placement every roast so the model's learned thresholds transfer.
+- **Reference roast:** star a good roast ★ so the Roast screen shows live FC/SC targets and the progress bars pace correctly.
+- **Recording for training:** turn on Settings → Training before a roast to capture a WAV + label JSON; the more roasts you record, the sharper detection gets — second crack especially, since it's the hardest to capture.
+- **Second crack timing:** SC on the CBR-101 is quieter and snappier than FC. If you pull right as it starts, the detection has only the onset to work with — that's expected.
 
 ---
 
@@ -110,73 +119,81 @@ The ambient noise floor is only updated from **non-spike frames**, so bursts of 
 | Component | Library |
 |---|---|
 | Language | Kotlin |
-| Min SDK | 26 (Android 8.0) |
-| Target SDK | 34 (Android 14) |
+| Min SDK / Target SDK | 26 (Android 8.0) / 34 (Android 14) |
 | UI | Material Design 3, ViewBinding |
 | Navigation | Navigation Component 2.7.7 + Safe Args |
-| Audio | AudioRecord API |
-| Database | Room 2.6.1 |
+| Audio | AudioRecord API + custom FFT |
+| ML | TensorFlow Lite 2.14 (3-class crack classifier) |
+| Database | Room 2.6.1 (KSP) |
 | Settings | DataStore Preferences 1.1.1 |
 | DI | Hilt 2.51.1 |
 | Async | Coroutines + Flow |
 | Charts | MPAndroidChart 3.1.0 |
+| Training | Python (TensorFlow, librosa, scikit-learn) |
 
 ---
 
 ## Project Structure
 
 ```
-app/src/main/java/com/roastcompanion/
-├── audio/
-│   ├── AudioAnalyzer.kt        # AudioRecord loop, state machine, flow outputs
-│   ├── TransientDetector.kt    # RMS computation, rolling ambient, spike detection
-│   ├── RoastPhase.kt           # State machine phases enum
-│   └── CrackEvent.kt           # Sealed class: FC started/ended, SC started
-├── data/
-│   ├── db/                     # Room database, DAO, RoastSession entity
-│   ├── repository/             # RoastRepository (single source of truth)
-│   └── preferences/            # DataStore-backed UserPreferences
-├── service/
-│   └── RoastMonitorService.kt  # Foreground service — owns AudioRecord
-├── di/                         # Hilt modules (DB, Audio)
-├── model/
-│   └── CookingCarryover.kt     # Pure carryover calculation functions
-├── ui/
-│   ├── roast/                  # Main roast screen + ViewModel + carryover sheet
-│   ├── log/                    # Session list, detail, adapter
-│   └── settings/               # Settings screen + ViewModel
-└── util/                       # NotificationHelper, PermissionHelper, TimeFormatter
+app/src/main/
+├── assets/                         # crack_detector.tflite + feature_norm.json
+└── java/com/roastcompanion/
+    ├── audio/
+    │   ├── AudioAnalyzer.kt        # AudioRecord loop, gates, state machine, flows
+    │   ├── TransientDetector.kt    # RMS, rolling ambient, amplitude gate
+    │   ├── SpectralGate.kt         # FFT, 2–9 kHz crack-band ratio
+    │   ├── CrackClassifier.kt      # TFLite 3-class model (MFCC/RMS/spectral features)
+    │   ├── RoastPhase.kt           # State machine phases
+    │   └── CrackEvent.kt           # Sealed class: FC started/ended, SC started
+    ├── data/                       # Room (entity/DAO), RoastRepository, DataStore prefs
+    ├── service/                    # RoastMonitorService — foreground service, owns AudioRecord + WAV recorder
+    ├── di/                         # Hilt modules (DB, Audio)
+    ├── ui/
+    │   ├── roast/                  # Roast screen + ViewModel, carryover sheet
+    │   ├── log/                    # Session list, detail, adapter
+    │   ├── settings/               # Settings
+    │   └── guide/                  # Roasting 101 reference
+    └── util/                       # Notification, Permission, TimeFormatter
+
+training_data/
+├── scripts/                        # train.py, make_clips.py, requirements.txt
+├── raw/                            # recorded WAV + JSON pairs (gitignored)
+└── model/                          # trained TFLite output (gitignored)
 ```
 
-The foreground service owns the `AudioRecord` instance so mic monitoring continues when the screen is off or the app is backgrounded. `AudioAnalyzer` is a Hilt singleton shared between the service (which writes audio data to it) and the ViewModel (which reads its `StateFlow`/`SharedFlow` outputs) — no service binding required.
+`AudioAnalyzer` is a Hilt singleton shared between the foreground service (which writes audio into it and optionally records a WAV) and the ViewModels (which collect its `StateFlow`/`SharedFlow` outputs) — no service binding required.
 
 ---
 
 ## Building
 
-1. Clone the repo and open in Android Studio (Hedgehog or later)
-2. Let Gradle sync and download dependencies
+1. Clone and open in Android Studio
+2. Let Gradle sync
 3. Connect an Android device (API 26+) — emulators have no mic input
-4. Run — mic permission is requested on first "Start Roast" tap
+4. Run — mic permission is requested on first "Start Roast"
 
-> **Alarm sound:** The app uses the device's default alarm ringtone via `RingtoneManager`. No audio file needs to be bundled. Make sure your phone has an alarm sound configured in system settings.
+Releases are built by GitHub Actions on a `vX.Y.Z` tag (signed APK). See `RELEASING.md`.
+
+> **Alarm sound:** uses the device's default alarm ringtone via `RingtoneManager` — no bundled audio. Ensure an alarm sound is set in system settings.
 
 ---
 
 ## Permissions
 
-| Permission | When requested | Purpose |
+| Permission | When | Purpose |
 |---|---|---|
-| `RECORD_AUDIO` | First "Start Roast" tap | Microphone access for crack detection |
-| `POST_NOTIFICATIONS` | First "Start Roast" tap (Android 13+) | Foreground service persistent notification |
-| `FOREGROUND_SERVICE_MICROPHONE` | Granted at install | Allows mic use in foreground service |
-| `VIBRATE` | Granted at install | Vibration alerts on crack events |
+| `RECORD_AUDIO` | First "Start Roast" | Microphone access for crack detection |
+| `POST_NOTIFICATIONS` | First "Start Roast" (Android 13+) | Foreground service notification |
+| `FOREGROUND_SERVICE_MICROPHONE` | Install | Mic use in foreground service |
+| `VIBRATE` | Install | Vibration alerts |
 
 ---
 
 ## Limitations & Known Considerations
 
-- Detection is amplitude-based transient counting, not ML or frequency-domain classification. It works well in reasonably quiet environments but is not infallible. Always watch your beans — the app is a monitoring aid, not a replacement for attention.
-- The CBR-101's enclosed chaff collector dampens crack sounds more than open-drum roasters. A phone pressed against the machine body picks up more than one sitting on a nearby bench.
-- Carryover calculation is a configurable linear estimate, not a thermometric model. The 45-second default reflects typical CBR-101 cooling behaviour at City+ to Full City+ roast levels. Adjust based on your own observations.
-- If the app is killed by the OS (extreme memory pressure), the foreground service may be restarted with an incomplete session. In-progress session data is saved to the database incrementally as each event fires, so FC/SC timestamps already logged will be preserved.
+- Detection blends amplitude, spectral, and a small ML classifier trained on a modest number of real roasts. It is a monitoring aid, not a replacement for attention — always watch your beans.
+- Second crack is the hardest event to detect well: it's quiet, and on this roaster you often pull right as it begins, so there's little SC audio to learn from. Detection of it will keep improving as more roasts are recorded.
+- The classifier is only as good as its training data and assumes a consistent mic position (exhaust side recommended). Train and roast from the same placement.
+- Carryover is a configurable timer, not a thermometric model.
+- If the OS kills the app under memory pressure, in-progress session data is already persisted incrementally, so logged FC/SC timestamps survive.

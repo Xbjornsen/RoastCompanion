@@ -98,6 +98,10 @@ class RoastRepository @Inject constructor(
 
     fun getLatestFavorite(): Flow<RoastSession?> = dao.getLatestFavorite()
 
+    suspend fun getRoastNameSuggestions(): List<String> = dao.getRoastNameSuggestions()
+    suspend fun getBeanOriginSuggestions(): List<String> = dao.getBeanOriginSuggestions()
+    suspend fun getGreenWeightSuggestions(): List<Float> = dao.getGreenWeightSuggestions()
+
     suspend fun updateTemperatures(id: Long, fcStartTempC: Float?, fcEndTempC: Float?, scTempC: Float?) {
         dao.getSessionById(id)?.let {
             dao.update(it.copy(fcStartTempC = fcStartTempC, fcEndTempC = fcEndTempC, scTempC = scTempC))

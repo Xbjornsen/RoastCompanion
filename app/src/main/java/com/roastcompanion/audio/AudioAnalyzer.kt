@@ -16,7 +16,8 @@ import javax.inject.Singleton
 @Singleton
 class AudioAnalyzer @Inject constructor(
     private val detector: TransientDetector,
-    private val prefs: UserPreferences
+    private val prefs: UserPreferences,
+    private val crackClassifier: CrackClassifier
 ) {
     companion object {
         private const val TAG = "RC"
@@ -37,6 +38,16 @@ class AudioAnalyzer @Inject constructor(
 
         // Second crack window (FC context already gates this phase)
         const val SC_WINDOW_MS = 10_000L
+
+        // Hard floor between FC start and SC: real second crack is ~1.5-3 min
+        // after first crack. Without this, a lull in the FC roll ends FC early
+        // and the continuing roll gets misread as SC seconds later (the cascade).
+        const val MIN_FC_TO_SC_MS = 75_000L
+
+        // SC pops are quieter than FC (≈2× ambient vs ≈7×). Use a lower
+        // amplitude bar once we're listening for SC so quiet snaps still reach
+        // the classifier, which then confirms the SC class by sound.
+        const val SC_AMP_MULTIPLIER = 1.8f
     }
 
     private val spectralGate = SpectralGate()
@@ -122,6 +133,7 @@ class AudioAnalyzer @Inject constructor(
     }
 
     fun startSession() {
+        if (!crackClassifier.isLoaded) crackClassifier.load()
         paused = false
         _isPaused.value = false
         _crackCount.value = 0
@@ -182,15 +194,15 @@ class AudioAnalyzer @Inject constructor(
 
         when (phase) {
             RoastPhase.MONITORING -> {
-                if (isCrackTransient(samples, count, rms)) {
-                    // Time gate: first crack physically cannot happen this
-                    // early in a CBR-101 roast. Ignore the spike entirely —
-                    // and don't let it inflate the ambient estimate either.
+                // Only FIRST-crack sounds count here. The time gate still
+                // applies — FC can't physically happen early in a CBR-101 roast.
+                if (classifyTransient(samples, count, rms, thresholdMultiplier, CrackType.FC)
+                    == CrackType.FC) {
                     val elapsed = now - sessionStartMs
                     if (elapsed >= minFcTimeMs) {
                         handleTransient(now, isFirstCrackPhase = true)
                     } else {
-                        Log.d(TAG, "CRACK blocked by time gate: ${elapsed / 1000}s < ${minFcTimeMs / 1000}s")
+                        Log.d(TAG, "FC blocked by time gate: ${elapsed / 1000}s < ${minFcTimeMs / 1000}s")
                     }
                 } else {
                     detector.updateAmbient(rms)
@@ -199,7 +211,8 @@ class AudioAnalyzer @Inject constructor(
             }
 
             RoastPhase.FIRST_CRACK_ACTIVE -> {
-                if (isCrackTransient(samples, count, rms)) {
+                if (classifyTransient(samples, count, rms, thresholdMultiplier, CrackType.FC)
+                    == CrackType.FC) {
                     fcLastTransientMs = now
                     handleTransient(now, isFirstCrackPhase = true)
                 } else {
@@ -215,7 +228,11 @@ class AudioAnalyzer @Inject constructor(
             }
 
             RoastPhase.FIRST_CRACK_COMPLETE -> {
-                if (isCrackTransient(samples, count, rms)) {
+                // SC is quieter than FC, so it needs a lower amplitude bar to
+                // reach the model. Crucially, a continuing FC roll classifies as
+                // FC here and does NOT count toward SC — that's the cascade fix.
+                if (classifyTransient(samples, count, rms, scAmpMultiplier(), CrackType.SC)
+                    == CrackType.SC) {
                     handleTransient(now, isFirstCrackPhase = false)
                 } else {
                     detector.updateAmbient(rms)
@@ -229,28 +246,54 @@ class AudioAnalyzer @Inject constructor(
         }
     }
 
+    private enum class CrackType { NONE, FC, SC }
+
+    private fun scAmpMultiplier(): Float = minOf(thresholdMultiplier, SC_AMP_MULTIPLIER)
+
     /**
-     * A frame counts as a crack only if it passes BOTH gates:
-     *  1. Amplitude — louder than ambient × multiplier (after warmup)
-     *  2. Spectrum — energy concentrated in the 2–9 kHz crack band,
-     *     which rejects voices, thuds, and low-frequency noise that
-     *     happen to be loud.
-     *
-     * Logs every amplitude-gate pass so logcat can be used to diagnose
-     * which gate is blocking detection: `adb logcat -s RC`
+     * Classifies a frame as FC, SC, or NONE. A frame must pass:
+     *  1. Amplitude — louder than ambient × [multiplier] (after warmup)
+     *  2. Spectrum  — energy in 2–9 kHz crack band ≥ CRACK_BAND_MIN_RATIO
+     *  3. ML model  — 3-class softmax (ambient/FC/SC); argmax wins
+     * If the model isn't loaded, a passing frame falls back to [fallback]
+     * (preserves timing-only behaviour). Log tag "RC": adb logcat -s RC
      */
-    private fun isCrackTransient(samples: ShortArray, count: Int, rms: Float): Boolean {
-        if (!detector.isTransient(rms, thresholdMultiplier)) return false
-        val ampRatio = rms / detector.ambientRms.coerceAtLeast(1f)
+    private fun classifyTransient(
+        samples: ShortArray, count: Int, rms: Float,
+        multiplier: Float, fallback: CrackType
+    ): CrackType {
+        if (!detector.isTransient(rms, multiplier)) return CrackType.NONE
+
+        val ampRatio  = rms / detector.ambientRms.coerceAtLeast(1f)
         val specRatio = spectralGate.crackBandRatio(samples, count)
         _diagAmplitudeRatio.value = ampRatio
-        _diagSpectralRatio.value = specRatio
-        val pass = specRatio >= SpectralGate.CRACK_BAND_MIN_RATIO
-        Log.d(TAG, "AMP PASS rms=${rms.toInt()} amb=${detector.ambientRms.toInt()} " +
-            "×${"%.1f".format(ampRatio)} " +
-            "spec=${"%.3f".format(specRatio)}/${SpectralGate.CRACK_BAND_MIN_RATIO} " +
-            if (pass) "CRACK ✓" else "spec-fail ✗")
-        return pass
+        _diagSpectralRatio.value  = specRatio
+
+        if (specRatio < SpectralGate.CRACK_BAND_MIN_RATIO) {
+            Log.d(TAG, "AMP×${"%.1f".format(ampRatio)} spec=${"%.3f".format(specRatio)} spec-fail ✗")
+            return CrackType.NONE
+        }
+
+        val probs = crackClassifier.classify(samples, count)
+        if (probs == null) {
+            Log.d(TAG, "AMP×${"%.1f".format(ampRatio)} spec=${"%.3f".format(specRatio)} model n/a → $fallback")
+            return fallback
+        }
+
+        val type = when (indexOfMax(probs)) {
+            CrackClassifier.CLASS_FC -> CrackType.FC
+            CrackClassifier.CLASS_SC -> CrackType.SC
+            else                     -> CrackType.NONE
+        }
+        Log.d(TAG, "AMP×${"%.1f".format(ampRatio)} spec=${"%.3f".format(specRatio)} " +
+            "p[a/fc/sc]=${"%.2f".format(probs[0])}/${"%.2f".format(probs[1])}/${"%.2f".format(probs[2])} → $type")
+        return type
+    }
+
+    private fun indexOfMax(a: FloatArray): Int {
+        var idx = 0
+        for (i in 1 until a.size) if (a[i] > a[idx]) idx = i
+        return idx
     }
 
     private fun handleTransient(now: Long, isFirstCrackPhase: Boolean) {
@@ -286,10 +329,17 @@ class AudioAnalyzer @Inject constructor(
                     }
                 }
                 !isFirstCrackPhase && phase == RoastPhase.FIRST_CRACK_COMPLETE -> {
-                    transitionTo(RoastPhase.SECOND_CRACK_ACTIVE)
-                    _eventFlow.tryEmit(CrackEvent.SecondCrackStarted)
-                    Log.d(TAG, "SC CONFIRMED after ${(now - sessionStartMs) / 1000}s")
-                    resetTransientWindow(now)
+                    // Hard floor: SC physically can't follow FC this quickly.
+                    // Blocks the FC-roll-misread-as-SC cascade.
+                    val sinceFc = now - fcStartMs
+                    if (sinceFc < MIN_FC_TO_SC_MS) {
+                        Log.d(TAG, "SC blocked by FC→SC floor: ${sinceFc / 1000}s < ${MIN_FC_TO_SC_MS / 1000}s")
+                    } else {
+                        transitionTo(RoastPhase.SECOND_CRACK_ACTIVE)
+                        _eventFlow.tryEmit(CrackEvent.SecondCrackStarted)
+                        Log.d(TAG, "SC CONFIRMED after ${(now - sessionStartMs) / 1000}s")
+                        resetTransientWindow(now)
+                    }
                 }
             }
         }

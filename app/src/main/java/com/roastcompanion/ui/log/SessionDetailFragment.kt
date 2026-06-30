@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import android.widget.ArrayAdapter
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
@@ -68,7 +69,8 @@ class SessionDetailFragment : Fragment() {
         }
 
         binding.etRoastName.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) viewModel.setRoastName(binding.etRoastName.text.toString().trim())
+            if (hasFocus) binding.etRoastName.showDropDown()
+            else viewModel.setRoastName(binding.etRoastName.text.toString().trim())
         }
 
         binding.etFcStartTemp.setOnFocusChangeListener { _, hasFocus ->
@@ -85,7 +87,8 @@ class SessionDetailFragment : Fragment() {
         }
 
         binding.etBeanOrigin.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) saveBeanInfo()
+            if (hasFocus) binding.etBeanOrigin.showDropDown()
+            else saveBeanInfo()
         }
 
         binding.chipSingleOrigin.setOnClickListener {
@@ -96,7 +99,8 @@ class SessionDetailFragment : Fragment() {
         }
 
         binding.etGreenWeight.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) saveWeightFields()
+            if (hasFocus) binding.etGreenWeight.showDropDown()
+            else saveWeightFields()
         }
         binding.etRoastedWeight.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) saveWeightFields()
@@ -114,9 +118,19 @@ class SessionDetailFragment : Fragment() {
                     combine(viewModel.session, viewModel.tempUnitCelsius) { s, c -> s to c }
                         .collect { (session, isCelsius) -> session?.let { bindSession(it, isCelsius) } }
                 }
+                launch {
+                    viewModel.suggestions.collect { s ->
+                        binding.etRoastName.setAdapter(autoAdapter(s.names))
+                        binding.etBeanOrigin.setAdapter(autoAdapter(s.beans))
+                        binding.etGreenWeight.setAdapter(autoAdapter(s.greenWeights))
+                    }
+                }
             }
         }
     }
+
+    private fun autoAdapter(items: List<String>) =
+        ArrayAdapter(requireContext(), R.layout.item_autocomplete, items)
 
     private fun saveTempField(text: String, setter: (Float?) -> Unit) {
         val value = text.trim().toFloatOrNull()
@@ -141,13 +155,17 @@ class SessionDetailFragment : Fragment() {
     }
 
     private fun bindSession(session: RoastSession, isCelsius: Boolean) {
+        // Timeline shown as elapsed roast-time (mm:ss into the roast), not wall-clock.
+        fun elapsed(absMs: Long?): String =
+            absMs?.let { TimeFormatter.formatElapsed(it - session.startTimeMs) } ?: "—"
+
         binding.tvSessionDate.text = TimeFormatter.formatDate(session.startTimeMs)
-        binding.tvStart.text  = "Start     ${TimeFormatter.formatTimestamp(session.startTimeMs)}"
-        binding.tvFcStart.text = "FC Start  ${session.firstCrackStartMs?.let { TimeFormatter.formatTimestamp(it) } ?: "—"}"
-        binding.tvFcEnd.text   = "FC End    ${session.firstCrackEndMs?.let { TimeFormatter.formatTimestamp(it) } ?: "—"}"
-        binding.tvSc.text      = "2C        ${session.secondCrackDetectedMs?.let { TimeFormatter.formatTimestamp(it) } ?: "—"}"
-        binding.tvCooling.text = "Cooling   ${session.coolingStartedMs?.let { TimeFormatter.formatTimestamp(it) } ?: "—"}"
-        binding.tvEnd.text     = "End       ${session.endTimeMs?.let { TimeFormatter.formatTimestamp(it) } ?: "—"}"
+        binding.tvStart.text  = "Start     00:00"
+        binding.tvFcStart.text = "FC Start  ${elapsed(session.firstCrackStartMs)}"
+        binding.tvFcEnd.text   = "FC End    ${elapsed(session.firstCrackEndMs)}"
+        binding.tvSc.text      = "2C        ${elapsed(session.secondCrackDetectedMs)}"
+        binding.tvCooling.text = "Cooling   ${elapsed(session.coolingStartedMs)}"
+        binding.tvEnd.text     = "End       ${elapsed(session.endTimeMs)}"
         binding.tvTotal.text   = "TOTAL  ${session.totalDurationMs?.let { TimeFormatter.formatDuration(it) } ?: "—"}"
 
         // Derived stats

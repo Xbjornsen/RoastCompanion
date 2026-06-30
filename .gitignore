@@ -14,3 +14,9 @@ local.properties
 # Release signing — never commit (public repo)
 release.jks
 keystore.properties
+
+# Training data — WAV files and venv are too large for git
+training_data/raw/
+training_data/venv/
+training_data/model/
+training_data/clips/

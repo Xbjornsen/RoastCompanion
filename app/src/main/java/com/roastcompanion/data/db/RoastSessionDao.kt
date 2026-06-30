@@ -37,4 +37,15 @@ interface RoastSessionDao {
     /** Most recently favourited roast — the live reference profile. */
     @Query("SELECT * FROM roast_sessions WHERE isFavorite = 1 ORDER BY startTimeMs DESC LIMIT 1")
     fun getLatestFavorite(): Flow<RoastSession?>
+
+    // ── Autocomplete suggestions: distinct values previously entered, most-recent first ──
+
+    @Query("SELECT profileName FROM roast_sessions WHERE profileName != '' GROUP BY profileName ORDER BY MAX(startTimeMs) DESC")
+    suspend fun getRoastNameSuggestions(): List<String>
+
+    @Query("SELECT beanOrigin FROM roast_sessions WHERE beanOrigin != '' GROUP BY beanOrigin ORDER BY MAX(startTimeMs) DESC")
+    suspend fun getBeanOriginSuggestions(): List<String>
+
+    @Query("SELECT greenWeightG FROM roast_sessions WHERE greenWeightG IS NOT NULL GROUP BY greenWeightG ORDER BY MAX(startTimeMs) DESC")
+    suspend fun getGreenWeightSuggestions(): List<Float>
 }

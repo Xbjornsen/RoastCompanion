@@ -42,6 +42,8 @@
     <string name="alert_fc_complete">First crack complete</string>
     <string name="alert_sc_detected">⚠ Second crack — start cooling?</string>
     <string name="action_start_cooling">Start Cooling</string>
+    <string name="sc_alert_body">Pull when ready — cooling carryover runs ~45s after you stop.</string>
+    <string name="sc_alert_dismiss">Silence &amp; dismiss</string>
 
     <!-- Permissions -->
     <string name="perm_mic_rationale">RoastCompanion uses the microphone to detect first and second crack sounds during roasting.</string>

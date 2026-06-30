@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/lab_background"
-    android:fitsSystemWindows="true"
-    android:clipToPadding="false"
-    android:paddingBottom="80dp">
+    android:background="@color/lab_background">
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="true"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -116,6 +121,20 @@
                 android:textSize="11sp"
                 android:letterSpacing="0.1"
                 android:layout_marginTop="6dp" />
+
+            <TextView
+                android:id="@+id/tv_roast_level"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/lab_amber"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08"
+                android:background="@drawable/bg_phase_pill"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="5dp"
+                android:layout_marginTop="12dp"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/tv_crack_count"
@@ -302,7 +321,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:background="@drawable/bg_card_surface"
+            android:background="@drawable/fc_card_progress"
             android:padding="14dp"
             android:gravity="center_vertical"
             android:layout_marginBottom="10dp">
@@ -415,7 +434,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:background="@drawable/bg_card_surface"
+            android:background="@drawable/sc_card_progress"
             android:padding="14dp"
             android:gravity="center_vertical"
             android:layout_marginBottom="20dp">
@@ -467,31 +486,44 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ── Action buttons ────────────────────────────────────────── -->
+    </LinearLayout>
 
-        <!-- START: shown when idle -->
-        <Button
-            android:id="@+id/btn_start"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="@string/start_roast"
-            android:textColor="@color/lab_background"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.05"
-            android:background="@drawable/bg_btn_primary"
-            android:stateListAnimator="@null"
-            android:layout_marginBottom="10dp"
-            android:visibility="visible" />
+    </androidx.core.widget.NestedScrollView>
 
-        <!-- PAUSE + STOP row: shown when active -->
+    <!-- ── Action buttons (pinned footer — always reachable, no scrolling) ── -->
+    <LinearLayout
+        android:id="@+id/action_footer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:background="@color/lab_background"
+        android:paddingHorizontal="@dimen/screen_padding"
+        android:paddingTop="10dp"
+        android:paddingBottom="18dp">
+
+        <!-- Single control row: Start (idle) | Pause · Stop (active) | Reset.
+             Buttons show/hide per state; gaps between visible ones are set in code. -->
         <LinearLayout
-            android:id="@+id/btn_group_active"
+            android:id="@+id/control_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="10dp"
-            android:visibility="gone">
+            android:layout_marginBottom="10dp">
+
+            <Button
+                android:id="@+id/btn_start"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="@string/start_roast"
+                android:textColor="@color/lab_background"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"
+                android:background="@drawable/bg_btn_primary"
+                android:stateListAnimator="@null"
+                android:visibility="visible" />
 
             <Button
                 android:id="@+id/btn_pause_resume"
@@ -503,7 +535,7 @@
                 android:textSize="14sp"
                 android:background="@drawable/bg_btn_ghost"
                 android:stateListAnimator="@null"
-                android:layout_marginEnd="8dp" />
+                android:visibility="gone" />
 
             <Button
                 android:id="@+id/btn_stop"
@@ -516,34 +548,91 @@
                 android:textStyle="bold"
                 android:letterSpacing="0.05"
                 android:background="@drawable/bg_btn_primary"
-                android:stateListAnimator="@null" />
+                android:stateListAnimator="@null"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btn_reset"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="Reset"
+                android:textColor="@color/lab_text_dim"
+                android:textSize="14sp"
+                android:background="@drawable/bg_btn_ghost"
+                android:stateListAnimator="@null"
+                android:visibility="gone" />
         </LinearLayout>
-
-        <!-- RESET: small ghost, shown when active -->
-        <Button
-            android:id="@+id/btn_reset"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_gravity="center_horizontal"
-            android:text="Reset"
-            android:textColor="@color/lab_text_dim"
-            android:textSize="12sp"
-            android:background="@null"
-            android:stateListAnimator="@null"
-            android:layout_marginBottom="8dp"
-            android:visibility="gone" />
-
-        <Button
-            android:id="@+id/btn_start_cooling"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="@string/start_cooling"
-            android:textColor="@color/lab_text_muted"
-            android:textSize="14sp"
-            android:background="@drawable/bg_btn_ghost"
-            android:stateListAnimator="@null"
-            android:enabled="false" />
-
     </LinearLayout>
 
-</androidx.core.widget.NestedScrollView>
+    <!-- ── Second Crack alert sheet (pinned, themed, dismiss-first) ──── -->
+    <LinearLayout
+        android:id="@+id/sc_alert_sheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:background="@drawable/bg_card_surface"
+        android:elevation="12dp"
+        android:paddingHorizontal="18dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="18dp"
+        android:layout_margin="12dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="6dp">
+
+            <View
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:background="@drawable/bg_sc_dot" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/second_crack"
+                android:textColor="@color/lab_red"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/sc_alert_body"
+            android:textColor="@color/lab_text_muted"
+            android:textSize="12sp"
+            android:lineSpacingMultiplier="1.3"
+            android:layout_marginBottom="14dp" />
+
+        <Button
+            android:id="@+id/btn_sc_dismiss"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="@string/sc_alert_dismiss"
+            android:textColor="@color/lab_background"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:background="@drawable/bg_btn_primary"
+            android:stateListAnimator="@null" />
+
+        <Button
+            android:id="@+id/btn_sc_cool"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/start_cooling"
+            android:textColor="@color/lab_red"
+            android:textSize="14sp"
+            android:background="@drawable/bg_btn_ghost_danger"
+            android:stateListAnimator="@null"
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
+
+</FrameLayout>

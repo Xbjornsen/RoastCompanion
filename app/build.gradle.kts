@@ -13,8 +13,8 @@ plugins {
 // Single version source. The release workflow overrides these from the git tag:
 //   gradle assembleRelease -PappVersionName=1.2.0 -PappVersionCode=10200
 // versionCode scheme: major*10000 + minor*100 + patch
-val appVersionName = (project.findProperty("appVersionName") as String?) ?: "1.6.0"
-val appVersionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 10600
+val appVersionName = (project.findProperty("appVersionName") as String?) ?: "1.7.3"
+val appVersionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 10703
 
 android {
     namespace = "com.roastcompanion"
@@ -115,6 +115,9 @@ dependencies {
 
     // MPAndroidChart
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+    // TFLite — crack classifier
+    implementation("org.tensorflow:tensorflow-lite:2.14.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

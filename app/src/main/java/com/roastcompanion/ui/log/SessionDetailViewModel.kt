@@ -23,12 +23,28 @@ class SessionDetailViewModel @Inject constructor(
     private val _session = MutableStateFlow<RoastSession?>(null)
     val session: StateFlow<RoastSession?> = _session.asStateFlow()
 
+    /** Distinct values previously entered, for the autocomplete dropdowns. */
+    data class Suggestions(
+        val names: List<String> = emptyList(),
+        val beans: List<String> = emptyList(),
+        val greenWeights: List<String> = emptyList()
+    )
+    private val _suggestions = MutableStateFlow(Suggestions())
+    val suggestions: StateFlow<Suggestions> = _suggestions.asStateFlow()
+
     val tempUnitCelsius: StateFlow<Boolean> = prefs.tempUnitCelsius
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_TEMP_UNIT_CELSIUS)
 
     fun loadSession(id: Long) {
         viewModelScope.launch {
             _session.value = repository.getSessionById(id)
+        }
+        viewModelScope.launch {
+            _suggestions.value = Suggestions(
+                names = repository.getRoastNameSuggestions(),
+                beans = repository.getBeanOriginSuggestions(),
+                greenWeights = repository.getGreenWeightSuggestions().map { "%.0f".format(it) }
+            )
         }
     }
 

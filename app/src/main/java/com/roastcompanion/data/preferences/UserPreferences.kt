@@ -31,13 +31,13 @@ class UserPreferences @Inject constructor(
         val KEY_RECORD_FOR_TRAINING    = booleanPreferencesKey("record_for_training")
 
         const val DEFAULT_THRESHOLD_MULTIPLIER = 1.5f
-        const val DEFAULT_FC_QUIET_PERIOD_S    = 12
+        const val DEFAULT_FC_QUIET_PERIOD_S    = 25
         const val DEFAULT_CARRYOVER_DURATION_S = 45
         const val DEFAULT_MIN_TRANSIENTS_FC    = 2
         const val DEFAULT_MIN_TRANSIENTS_SC    = 2
         const val DEFAULT_ALARM_SOUND_ENABLED  = true
         const val DEFAULT_VIBRATION_ENABLED    = true
-        const val DEFAULT_MIN_FC_TIME_MIN      = 4
+        const val DEFAULT_MIN_FC_TIME_MIN      = 9
         const val DEFAULT_KEEP_SCREEN_ON       = true
         const val DEFAULT_TEMP_UNIT_CELSIUS    = true
         const val DEFAULT_ROASTER_PROFILE      = "Gene Cafe CBR-101"
