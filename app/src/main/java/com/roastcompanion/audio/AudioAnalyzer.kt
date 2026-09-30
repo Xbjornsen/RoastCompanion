@@ -29,15 +29,40 @@ class AudioAnalyzer @Inject constructor(
         const val WINDOW_MS = 50
         val SAMPLES_PER_WINDOW = SAMPLE_RATE * WINDOW_MS / 1000  // 2205
 
-        // First crack is a rolling series of pops, not a burst — collect
-        // candidates over a wide window and require them to be spread out.
+        // First crack is a rolling series of pops (popcorn), not a burst. We
+        // collect FC-classified pops over a rolling window and require a
+        // *sustained cadence* — many pops spread across several sub-windows.
+        // This is what lets us trust the sound instead of the clock: a real
+        // roll is unmistakable; stray isolated noise (e.g. the 8-min CBR tick)
+        // can't fake sustained popping.
         const val FC_WINDOW_MS = 15_000L
-        // First→last crack in the window must span at least this long.
-        // Rejects "3 mouth clicks in 2 seconds".
-        const val FC_MIN_SPAN_MS = 4_000L
+        // Sub-window (bucket) size. Pops must land in >= FC_MIN_BUCKETS distinct
+        // buckets, i.e. be spread over time, not clustered in one instant.
+        const val FC_BUCKET_MS = 5_000L
+        const val FC_MIN_BUCKETS = 3
+        // Pops needed to confirm FC *after* the earliest-FC time (normal roast).
+        const val FC_MIN_POPS_NORMAL = 5
+        // Pops needed *before* the earliest-FC time — a much stronger bar. This
+        // is the mid-roast-start case (app started with beans already popping)
+        // AND the false-positive-prone early window. A genuine roll clears it in
+        // ~10-15s; the isolated early tick never does.
+        const val FC_MIN_POPS_EARLY = 8
+        // Mean model FC-confidence required for an *early* (pre-time-gate) fire.
+        // Belt-and-suspenders on top of the pop count. Tunable — validate the
+        // exact value against on-device probs before trusting it hard.
+        const val FC_EARLY_MIN_CONFIDENCE = 0.50f
 
         // Second crack window (FC context already gates this phase)
         const val SC_WINDOW_MS = 10_000L
+
+        // Absolute startup floor: the CBR-101's fan/motor/element spin-up makes
+        // ~10s of crack-like noise when switched on (observed auto-firing FC at
+        // a consistent ~13.6s, and in the empty-roaster recording too). FC can't
+        // physically happen this early even on a mid-roast app start, so block
+        // all FC confirmation for the first stretch. Unlike minFcTimeMs (a soft
+        // confidence prior), this is a hard mute — but short enough not to hurt
+        // a genuine mid-roast start (a real roll still fires ~10s after this).
+        const val FC_STARTUP_GRACE_MS = 25_000L
 
         // Hard floor between FC start and SC: real second crack is ~1.5-3 min
         // after first crack. Without this, a lull in the FC roll ends FC early
@@ -95,6 +120,15 @@ class AudioAnalyzer @Inject constructor(
     private var transientCountInWindow = 0
     @Volatile private var paused = false
 
+    // Rolling record of FC-classified pops (timestamp + model FC confidence)
+    // used by the sustained-roll detector. All access is on the IO thread.
+    private data class FcPop(val t: Long, val fcProb: Float)
+    private val fcPops = ArrayDeque<FcPop>()
+    // FC probability of the most recent FC-classified frame (set in
+    // classifyTransient, read when registering the pop). 1f when the model
+    // isn't loaded and we fell back to timing-only.
+    private var lastFcProb = 0f
+
     // ---- Output ----
     private val _phaseFlow = MutableStateFlow(RoastPhase.IDLE)
     val phaseFlow: StateFlow<RoastPhase> = _phaseFlow.asStateFlow()
@@ -146,6 +180,8 @@ class AudioAnalyzer @Inject constructor(
         fcLastTransientMs = 0L
         transientWindowStartMs = sessionStartMs
         transientCountInWindow = 0
+        fcPops.clear()
+        lastFcProb = 0f
         detector.reset()
         _phaseFlow.value = phase
     }
@@ -165,7 +201,25 @@ class AudioAnalyzer @Inject constructor(
             // trigger FC-complete via the quiet-period check.
             transientWindowStartMs = System.currentTimeMillis()
             fcLastTransientMs = 0L
+            fcPops.clear()
         }
+    }
+
+    /**
+     * The user manually marked first crack. Discard any (possibly false)
+     * auto-detected FC state and re-anchor the state machine to FC-active at
+     * *now*, so FC-end detection, the FC→SC floor, and the UI all reference the
+     * real first crack — not an early startup misfire. Recovers from any phase
+     * (a premature FC may have already advanced past MONITORING).
+     */
+    fun forceFirstCrack() {
+        if (phase == RoastPhase.IDLE) return
+        val now = System.currentTimeMillis()
+        fcStartMs = now
+        fcLastTransientMs = now
+        fcPops.clear()
+        resetTransientWindow(now)
+        transitionTo(RoastPhase.FIRST_CRACK_ACTIVE)
     }
 
     fun startCooling() {
@@ -194,19 +248,27 @@ class AudioAnalyzer @Inject constructor(
 
         when (phase) {
             RoastPhase.MONITORING -> {
-                // Only FIRST-crack sounds count here. The time gate still
-                // applies — FC can't physically happen early in a CBR-101 roast.
-                if (classifyTransient(samples, count, rms, thresholdMultiplier, CrackType.FC)
+                // Only FIRST-crack sounds count here. Confirmation is by
+                // *sustained roll*, not the clock. The earliest-FC time is now a
+                // confidence prior: before it we demand a much stronger roll
+                // (mid-roast-start case + false-positive window); after it, the
+                // normal roll suffices. See evaluateRoll().
+                val elapsed = now - sessionStartMs
+                if (elapsed < FC_STARTUP_GRACE_MS) {
+                    // Machine spin-up — mute FC entirely (kills the ~13.6s
+                    // startup false-crack). Pre-grace pops age out of the window.
+                    detector.updateAmbient(rms)
+                    pruneFcPops(now)
+                } else if (classifyTransient(samples, count, rms, thresholdMultiplier, CrackType.FC)
                     == CrackType.FC) {
-                    val elapsed = now - sessionStartMs
-                    if (elapsed >= minFcTimeMs) {
-                        handleTransient(now, isFirstCrackPhase = true)
-                    } else {
-                        Log.d(TAG, "FC blocked by time gate: ${elapsed / 1000}s < ${minFcTimeMs / 1000}s")
+                    registerFcPop(now, lastFcProb)
+                    val early = elapsed < minFcTimeMs
+                    if (evaluateRoll(now, early)) {
+                        confirmFirstCrack(now)
                     }
                 } else {
                     detector.updateAmbient(rms)
-                    resetWindowIfExpired(now, FC_WINDOW_MS)
+                    pruneFcPops(now)
                 }
             }
 
@@ -276,10 +338,12 @@ class AudioAnalyzer @Inject constructor(
 
         val probs = crackClassifier.classify(samples, count)
         if (probs == null) {
+            lastFcProb = 1f   // no model → timing-only fallback, treat as confident
             Log.d(TAG, "AMP×${"%.1f".format(ampRatio)} spec=${"%.3f".format(specRatio)} model n/a → $fallback")
             return fallback
         }
 
+        lastFcProb = probs[CrackClassifier.CLASS_FC]
         val type = when (indexOfMax(probs)) {
             CrackClassifier.CLASS_FC -> CrackType.FC
             CrackClassifier.CLASS_SC -> CrackType.SC
@@ -296,6 +360,65 @@ class AudioAnalyzer @Inject constructor(
         return idx
     }
 
+    // ---- FC sustained-roll detector (MONITORING) ------------------------------
+
+    /** Record an FC-classified pop, bump the live crack counter, prune stale. */
+    private fun registerFcPop(now: Long, fcProb: Float) {
+        _crackCount.value++
+        fcPops.addLast(FcPop(now, fcProb))
+        pruneFcPops(now)
+    }
+
+    private fun pruneFcPops(now: Long) {
+        val cutoff = now - FC_WINDOW_MS
+        while (fcPops.isNotEmpty() && fcPops.first().t < cutoff) fcPops.removeFirst()
+    }
+
+    /**
+     * True when the pops in the current window form a real first-crack roll:
+     * enough pops (a higher bar when [early]) spread across >= FC_MIN_BUCKETS
+     * distinct sub-windows. Before the earliest-FC time we also require decent
+     * mean model confidence — that early window is where stray noise false-fires
+     * (e.g. the 8-min CBR tick). A genuine roll clears even the early bar in
+     * ~10-15s, which is what makes a mid-roast app start work.
+     */
+    private fun evaluateRoll(now: Long, early: Boolean): Boolean {
+        pruneFcPops(now)
+        if (fcPops.isEmpty()) return false
+
+        val needPops = maxOf(
+            minTransientsFc,
+            if (early) FC_MIN_POPS_EARLY else FC_MIN_POPS_NORMAL
+        )
+        val pops = fcPops.size
+        if (pops < needPops) return false
+
+        val earliest = fcPops.first().t
+        val buckets = fcPops.mapTo(HashSet()) { ((it.t - earliest) / FC_BUCKET_MS).toInt() }.size
+        if (buckets < FC_MIN_BUCKETS) return false
+
+        if (early) {
+            val meanConf = fcPops.map { it.fcProb }.average().toFloat()
+            if (meanConf < FC_EARLY_MIN_CONFIDENCE) {
+                Log.d(TAG, "FC roll early-gate: pops=$pops buckets=$buckets " +
+                    "meanConf=${"%.2f".format(meanConf)} < $FC_EARLY_MIN_CONFIDENCE — waiting")
+                return false
+            }
+        }
+        Log.d(TAG, "FC ROLL ok: pops=$pops (need $needPops) buckets=$buckets early=$early")
+        return true
+    }
+
+    private fun confirmFirstCrack(now: Long) {
+        fcStartMs = fcPops.first().t          // the roll began at the first pop
+        fcLastTransientMs = now
+        transitionTo(RoastPhase.FIRST_CRACK_ACTIVE)
+        _eventFlow.tryEmit(CrackEvent.FirstCrackStarted)
+        Log.d(TAG, "FC CONFIRMED after ${(now - sessionStartMs) / 1000}s (${fcPops.size} pops)")
+        fcPops.clear()
+        resetTransientWindow(now)
+    }
+
     private fun handleTransient(now: Long, isFirstCrackPhase: Boolean) {
         _crackCount.value++
         val windowMs = if (isFirstCrackPhase) FC_WINDOW_MS else SC_WINDOW_MS
@@ -310,37 +433,20 @@ class AudioAnalyzer @Inject constructor(
         val spanMs = now - transientWindowStartMs
         Log.d(TAG, "TRANSIENT phase=$phase count=$transientCountInWindow/$required span=${spanMs}ms window=${windowMs}ms")
 
-        if (transientCountInWindow >= required) {
-            when {
-                isFirstCrackPhase && phase == RoastPhase.MONITORING -> {
-                    // Pattern requirement: cracks must be SPREAD over time.
-                    // A real first crack rolls for 30s+; a burst of clicks
-                    // in a couple of seconds doesn't qualify — keep waiting
-                    // for more evidence inside the window.
-                    if (spanMs >= FC_MIN_SPAN_MS) {
-                        fcStartMs = transientWindowStartMs
-                        fcLastTransientMs = now
-                        transitionTo(RoastPhase.FIRST_CRACK_ACTIVE)
-                        _eventFlow.tryEmit(CrackEvent.FirstCrackStarted)
-                        Log.d(TAG, "FC CONFIRMED after ${(now - sessionStartMs) / 1000}s")
-                        resetTransientWindow(now)
-                    } else {
-                        Log.d(TAG, "FC count=$transientCountInWindow/$required but span too short: ${spanMs}ms < ${FC_MIN_SPAN_MS}ms — waiting")
-                    }
-                }
-                !isFirstCrackPhase && phase == RoastPhase.FIRST_CRACK_COMPLETE -> {
-                    // Hard floor: SC physically can't follow FC this quickly.
-                    // Blocks the FC-roll-misread-as-SC cascade.
-                    val sinceFc = now - fcStartMs
-                    if (sinceFc < MIN_FC_TO_SC_MS) {
-                        Log.d(TAG, "SC blocked by FC→SC floor: ${sinceFc / 1000}s < ${MIN_FC_TO_SC_MS / 1000}s")
-                    } else {
-                        transitionTo(RoastPhase.SECOND_CRACK_ACTIVE)
-                        _eventFlow.tryEmit(CrackEvent.SecondCrackStarted)
-                        Log.d(TAG, "SC CONFIRMED after ${(now - sessionStartMs) / 1000}s")
-                        resetTransientWindow(now)
-                    }
-                }
+        // FC confirmation now lives in the sustained-roll detector
+        // (registerFcPop/evaluateRoll/confirmFirstCrack). Here we only handle SC.
+        if (!isFirstCrackPhase && phase == RoastPhase.FIRST_CRACK_COMPLETE &&
+            transientCountInWindow >= required) {
+            // Hard floor: SC physically can't follow FC this quickly.
+            // Blocks the FC-roll-misread-as-SC cascade.
+            val sinceFc = now - fcStartMs
+            if (sinceFc < MIN_FC_TO_SC_MS) {
+                Log.d(TAG, "SC blocked by FC→SC floor: ${sinceFc / 1000}s < ${MIN_FC_TO_SC_MS / 1000}s")
+            } else {
+                transitionTo(RoastPhase.SECOND_CRACK_ACTIVE)
+                _eventFlow.tryEmit(CrackEvent.SecondCrackStarted)
+                Log.d(TAG, "SC CONFIRMED after ${(now - sessionStartMs) / 1000}s")
+                resetTransientWindow(now)
             }
         }
     }

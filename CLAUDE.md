@@ -58,7 +58,7 @@ ui/         MainActivity (BottomNav + NavHost)
 service writes audio into it; ViewModels collect its StateFlows directly.
 **There is no service binding** — don't add one.
 
-## Crack detection (3 gates, all must pass)
+## Crack detection (per-frame gates + sustained-roll confirmation)
 
 A loud frame only counts toward a crack if:
 
@@ -70,11 +70,33 @@ A loud frame only counts toward a crack if:
 3. **Spectrum** — `SpectralGate`: 2048-pt FFT, ≥45% of audible energy must be
    in 2–9 kHz (cracks are high-frequency pops; voice/fan/thuds are low).
 
-Plus a **time gate**: transients ignored before "Earliest First Crack"
-(default 4 min, user setting `minFcTimeMin`) — the CBR-101 never reaches FC
-earlier. And a **pattern gate**: FC confirmation needs `minTransientsFc` crack
-frames spread over ≥4s within a 15s window (real FC rolls like popcorn; a
-burst of clicks doesn't qualify). SC uses a 10s window, no span requirement.
+Plus a **4th (ML) gate** — a 3-class TFLite model (ambient/FC/SC) whose argmax
+decides crack *type* by sound.
+
+**FC confirmation = sustained-roll detector** (not the clock). FC-classified
+pops go into a rolling 15s window (`fcPops`); FC fires when there are enough
+pops spread across ≥`FC_MIN_BUCKETS` (3) distinct 5s sub-windows. The
+"Earliest First Crack" time (`minFcTimeMin`) is **no longer a hard mute** — it's
+a confidence prior: *after* it, `FC_MIN_POPS_NORMAL` (5) pops confirm; *before*
+it, the stronger `FC_MIN_POPS_EARLY` (8) pops **plus** mean model FC-confidence
+≥ `FC_EARLY_MIN_CONFIDENCE` (0.50). This makes a **mid-roast app start** work
+(a real roll fires from the sound alone in ~10-15s) while still blocking the
+8-min CBR false-crack tick. All thresholds are `companion object` constants in
+`AudioAnalyzer`; `minTransientsFc` is now only a *floor* (`maxOf`) on the pop
+count. Confirmation lives in `registerFcPop`/`evaluateRoll`/`confirmFirstCrack`.
+
+**SC** still uses the count-in-window path in `handleTransient` (10s window,
+`minTransientsSc`), guarded by the `MIN_FC_TO_SC_MS` (75s) floor.
+
+**Startup grace** (`FC_STARTUP_GRACE_MS`, 25s): the CBR spin-up makes ~10s of
+crack-like noise and consistently auto-fired a false FC at ~13.6s. FC confirmation
+is hard-muted for the first 25s (a real roll still fires ~10s after, so mid-roast
+starts are fine). Separate from `minFcTimeMin` (the soft confidence prior).
+
+**Manual FC reset**: tapping the FC-start chip calls `AudioAnalyzer.forceFirstCrack()`
+— it re-anchors the state machine to FIRST_CRACK_ACTIVE at the tap and the VM wipes
+any premature auto FC-end/SC. Manual FC always overrides a misfired auto FC (it no
+longer only back-fills when the app "missed" it).
 
 State machine: IDLE → MONITORING → FIRST_CRACK_ACTIVE → (quiet period) →
 FIRST_CRACK_COMPLETE → SECOND_CRACK_ACTIVE → COOLING.

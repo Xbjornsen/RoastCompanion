@@ -95,6 +95,9 @@ class SettingsFragment : Fragment() {
         binding.btnGuide.setOnClickListener {
             findNavController().navigate(R.id.guideFragment)
         }
+        binding.btnTempCam.setOnClickListener {
+            findNavController().navigate(R.id.tempCamFragment)
+        }
 
         binding.btnExport.setOnClickListener {
             val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())

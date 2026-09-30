@@ -20,3 +20,8 @@ training_data/raw/
 training_data/venv/
 training_data/model/
 training_data/clips/
+
+# Local dev captures / caches
+training_data/tempcam/
+__pycache__/
+.claude/settings.local.json

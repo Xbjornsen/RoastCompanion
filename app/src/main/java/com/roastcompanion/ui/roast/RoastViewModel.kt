@@ -94,6 +94,13 @@ class RoastViewModel @Inject constructor(
     private val _confirmedTypes = MutableStateFlow<Set<String>>(emptySet())
     val confirmedTypes: StateFlow<Set<String>> = _confirmedTypes.asStateFlow()
 
+    // TRUE auto-detected wall-clock times — set only by the detector, NEVER by a
+    // manual confirm/override. The training JSON's autoDetected block uses these
+    // so a manual FC correction can't hide what the app actually auto-fired.
+    private var autoFcMs: Long? = null
+    private var autoFcEndMs: Long? = null
+    private var autoScMs: Long? = null
+
     private var currentSessionId = -1L
     private var sessionStartMs = 0L
     private var pausedAtMs = 0L
@@ -112,18 +119,21 @@ class RoastViewModel @Inject constructor(
             val now = System.currentTimeMillis()
             when (event) {
                 is CrackEvent.FirstCrackStarted -> {
+                    autoFcMs = now
                     _fcStartMs.value = now
                     _fcStartElapsedMs.value = _sessionTimerMs.value
                     if (currentSessionId >= 0) repository.updateFirstCrackStart(currentSessionId, now)
                     _alerts.emit(RoastAlert.FirstCrackDetected)
                 }
                 is CrackEvent.FirstCrackEnded -> {
+                    autoFcEndMs = now
                     _fcEndMs.value = now
                     _fcEndElapsedMs.value = _sessionTimerMs.value
                     if (currentSessionId >= 0) repository.updateFirstCrackEnd(currentSessionId, now, event.durationMs)
                     _alerts.emit(RoastAlert.FirstCrackComplete)
                 }
                 is CrackEvent.SecondCrackStarted -> {
+                    autoScMs = now
                     _scDetectedMs.value = now
                     _scElapsedMs.value = _sessionTimerMs.value
                     if (currentSessionId >= 0) repository.updateSecondCrack(currentSessionId, now)
@@ -143,6 +153,7 @@ class RoastViewModel @Inject constructor(
         _fcStartMs.value = null;      _fcStartElapsedMs.value = null
         _fcEndMs.value = null;        _fcEndElapsedMs.value = null
         _scDetectedMs.value = null;   _scElapsedMs.value = null
+        autoFcMs = null;              autoFcEndMs = null;        autoScMs = null
         _carryoverState.value = null
         _confirmedTypes.value = emptySet()
 
@@ -164,9 +175,11 @@ class RoastViewModel @Inject constructor(
 
         val sid        = currentSessionId
         val startMs    = sessionStartMs
-        val fcStartMs  = _fcStartMs.value
-        val fcEndMs    = _fcEndMs.value
-        val scStartMs  = _scDetectedMs.value
+        // Use the TRUE auto-detected times for the log's autoDetected block —
+        // NOT _fcStartMs etc., which a manual FC correction may have overwritten.
+        val fcStartMs  = autoFcMs
+        val fcEndMs    = autoFcEndMs
+        val scStartMs  = autoScMs
         val doRecord   = recordForTraining.value
 
         viewModelScope.launch {
@@ -343,9 +356,18 @@ class RoastViewModel @Inject constructor(
                 )
                 // Back-fill the session record if the app missed this event
                 when (crackType) {
-                    "FC_START" -> if (_fcStartMs.value == null) {
+                    "FC_START" -> {
+                        // Manual FC always wins. Re-anchor the roast to this
+                        // moment and wipe any premature FC-end / SC that an early
+                        // startup misfire produced — the detector, the timers,
+                        // the progress bars and roast level all reset from here.
+                        audioAnalyzer.forceFirstCrack()
                         _fcStartMs.value = confirmedMs
                         _fcStartElapsedMs.value = elapsedMs
+                        _fcEndMs.value = null
+                        _fcEndElapsedMs.value = null
+                        _scDetectedMs.value = null
+                        _scElapsedMs.value = null
                         repository.updateFirstCrackStart(sessionId, confirmedMs)
                     }
                     "FC_END" -> if (_fcEndMs.value == null) {
@@ -363,7 +385,10 @@ class RoastViewModel @Inject constructor(
             }
         }
 
-        _confirmedTypes.value = _confirmedTypes.value + crackType
+        // A new manual FC start invalidates any earlier FC-end / SC marks.
+        _confirmedTypes.value =
+            if (crackType == "FC_START") setOf("FC_START")
+            else _confirmedTypes.value + crackType
     }
 
     fun isSessionActive(): Boolean = isSessionActive

@@ -73,7 +73,11 @@ DATA.forEach((d,idx)=>{
       <span><span class="swatch" style="background:#58FFA9"></span>your confirmed mark</span>
       <span><span class="swatch" style="background:#E84A3A"></span>app auto-detect</span>
     </div>
-    <audio id="au${idx}" src="${d.mp3}" controls preload="metadata"></audio>
+    <audio id="au${idx}" src="${d.mp3hp}" controls preload="metadata"></audio>
+    <div class="row" style="margin-top:8px">
+      <button id="filt${idx}">Fan filter: ON</button>
+      <span class="meta" id="filtlbl${idx}">high-pass 1.8 kHz — thud vanishes, crack stays</span>
+    </div>
     <div class="row" style="margin-top:12px">
       <button id="logFC${idx}">Log FC edge (C)</button>
       <button class="ghost" id="logSC${idx}">Log SC edge</button>
@@ -86,6 +90,17 @@ DATA.forEach((d,idx)=>{
   const au=card.querySelector(`#au${idx}`), cv=card.querySelector(`#cv${idx}`),
         ctx=cv.getContext("2d"), clk=card.querySelector(`#clk${idx}`),
         mk=card.querySelector(`#mk${idx}`);
+  // Fan-filter toggle: swap mp3 source but keep playback position + play state.
+  let filtered=true;
+  const filt=card.querySelector(`#filt${idx}`), filtlbl=card.querySelector(`#filtlbl${idx}`);
+  filt.addEventListener("click",()=>{
+    const t=au.currentTime, playing=!au.paused;
+    filtered=!filtered;
+    au.src=filtered?d.mp3hp:d.mp3;
+    filt.textContent="Fan filter: "+(filtered?"ON":"OFF");
+    filtlbl.textContent=filtered?"high-pass 1.8 kHz — thud vanishes, crack stays":"original — full fan/motor noise";
+    au.addEventListener("loadedmetadata",()=>{au.currentTime=t; if(playing)au.play();},{once:true});
+  });
   const W=cv.width,H=cv.height, n=d.rms.length, dur=d.clipDurSec;
   let logs=[];
 
@@ -145,8 +160,17 @@ SR       = 44100
 N_FFT    = 2048
 HF_LOW, HF_HIGH, FLOOR = 2000, 9000, 150
 
-# (startMs, friendly name)
-SESSIONS = [(1781835881068, "Session 2"), (1781836828189, "Session 3")]
+# (startMs, friendly name) — Priority 1 by-ear labeling queue (2026-09-23)
+SESSIONS = [
+    (1782083781012, "Session 4 — verify FC+SC"),
+    (1782084719085, "Session 5 — messy taps, verify FC+SC"),
+    (1782283382681, "Session 6 — verify FC+SC"),
+    (1782284673101, "Session 7 — verify FC+SC"),
+    (1782285754176, "Session 8 — verify FC+SC"),
+    (1783584363852, "Session 33 — verify FC+SC"),
+    (1783925610893, "Session 34 — verify FC+SC"),
+    (1783926654131, "Session 35 — verify FC+SC"),
+]
 
 
 def load_wav_i16(path):
@@ -184,11 +208,20 @@ for sid, name in SESSIONS:
 
     tmp_wav = CLIPS / f"_tmp_{sid}.wav"
     mp3 = CLIPS / f"session_{sid}.mp3"
+    mp3hp = CLIPS / f"session_{sid}_hp.mp3"
     with wave.open(str(tmp_wav), "wb") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
         w.writeframes(clip.tobytes())
+    # Original (unfiltered) clip.
     subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-i", str(tmp_wav),
                     "-ac", "1", "-b:a", "64k", str(mp3)], check=True)
+    # Fan-filtered clip: high-pass 1.8 kHz kills the CBR fan/motor rumble,
+    # low-pass 9 kHz trims hiss, loudnorm brings the quiet cracks back up.
+    # A real 2–9 kHz crack survives this; a low-frequency thud vanishes.
+    subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-i", str(tmp_wav),
+                    "-ac", "1", "-af",
+                    "highpass=f=1800,lowpass=f=9000,loudnorm=I=-16:TP=-1.5",
+                    "-b:a", "64k", str(mp3hp)], check=True)
     tmp_wav.unlink()
 
     rms_env, crk_env = envelopes(clip)
@@ -207,7 +240,7 @@ for sid, name in SESSIONS:
 
     bundle.append({
         "name": name, "sessionId": meta.get("sessionId"),
-        "mp3": mp3.name, "totalSec": round(total_s, 1),
+        "mp3": mp3.name, "mp3hp": mp3hp.name, "totalSec": round(total_s, 1),
         "clipStartSec": round(clip_start_s, 1), "clipDurSec": round(len(clip) / SR, 1),
         "envHz": ENV_HZ, "rms": rms_n, "crk": crk_n, "markers": markers,
     })

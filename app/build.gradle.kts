@@ -119,6 +119,13 @@ dependencies {
     // TFLite — crack classifier
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
 
+    // CameraX — Temp Cam dev capture (records the CBR LED display for 7-seg OCR)
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-video:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
