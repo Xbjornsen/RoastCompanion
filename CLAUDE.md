@@ -38,13 +38,14 @@ tool for an experienced home roaster — function over onboarding.
 Kotlin · min SDK 26 / target 34 · Hilt 2.51.1 · Room 2.6.1 (KSP, schema via
 `ksp { arg("room.schemaLocation", ...) }` — the `room {}` DSL is NOT applied) ·
 DataStore Preferences · Navigation Component + Safe Args · Material 3 ·
-MPAndroidChart 3.1.0 (JitPack repo in settings.gradle.kts).
+MPAndroidChart 3.1.0 (JitPack repo in settings.gradle.kts). No TFLite (removed in v2 detection).
 
 ## Architecture
 
 ```
-audio/      TransientDetector (RMS + ambient floor), SpectralGate (FFT),
-            AudioAnalyzer (@Singleton state machine), RoastPhase, CrackEvent
+audio/      AudioAnalyzer (@Singleton state machine), RollDetector (FC/SC), FeatureExtractor
+            (impulsiveness + v2 model features), TransientDetector/SpectralGate (level/diagnostics),
+            RoastPhase, CrackEvent
 service/    RoastMonitorService — foreground service (microphone type), owns AudioRecord
 data/       Room (RoastSession entity/dao), UserPreferences (DataStore), RoastRepository
 ui/         MainActivity (BottomNav + NavHost)
@@ -58,48 +59,52 @@ ui/         MainActivity (BottomNav + NavHost)
 service writes audio into it; ViewModels collect its StateFlows directly.
 **There is no service binding** — don't add one.
 
-## Crack detection (per-frame gates + sustained-roll confirmation)
+## Crack detection (v2 — impulsive-rate roll detector)
 
-A loud frame only counts toward a crack if:
+Pipeline: `RoastMonitorService` reads 50 ms frames (2205 samples) → `AudioAnalyzer.processBuffer`
+→ `FeatureExtractor.impulsiveness(frame)` → `RollDetector.push()` → phase/events.
 
-1. **Warmup** — first 3s of a session build the ambient noise floor; nothing
-   detects during warmup (`TransientDetector.MIN_WARMUP_FRAMES`).
-2. **Amplitude** — RMS > ambient × multiplier (default 3.5, user setting).
-   Ambient = mean of the lower 70th percentile of last 100 frames, only
-   updated from non-spike frames.
-3. **Spectrum** — `SpectralGate`: 2048-pt FFT, ≥45% of audible energy must be
-   in 2–9 kHz (cracks are high-frequency pops; voice/fan/thuds are low).
+- **Impulsiveness** (per frame): energy of the 2nd difference in 1 ms blocks; ln(max/median).
+  A crack pop is 1–5 ms, so it is one block far above the rest; fan/drum noise is flat at
+  that scale. (At 50 ms frame level FC pops are buried in fan/drum noise — every gate the
+  v1 detector used, incl. the ML model, saw MORE crack-like frames before FC than during it.)
+- **RollDetector** counts pops (impulsiveness > 3.5) per window and fires when the rate rises
+  well above the roast's OWN recent baseline (absolute loudness varies ~25x between roasts):
+  FC: 20 s rate ≥ max(1.7×median of the 2 min ending 20 s ago, +20) for 5 s, not before 4 min
+  and not before ("Earliest First Crack" setting − 60 s).
+  SC: from 90 s after FC (auto or manual tap), 10 s rate ≥ max(1.3×baseline(60 s), +3) for 3 s.
+  FC end (informational): rate back near the pre-FC baseline for the quiet-period setting.
+- **Manual FC tap** → `AudioAnalyzer.forceFirstCrack()` re-anchors FC (and SC timing) to now.
+- Measured with `training_data/scripts/harness.py` on 18 by-ear-labelled roasts:
+  FC 11/18 within −30..+60 s, 0 early, 3 late, 4 missed; SC after a manual FC tap 9/16
+  within ±30 s, 0 early/late, 7 missed; empty-roaster run: no events. Leave-one-roast-out
+  (params chosen without the scored roast): FC 7/18, SC 7/16 — expect the lower numbers.
+- **Constants live in TWO places that must match:** `audio/RollDetector.kt` and
+  `training_data/scripts/rolldet.py`. `RollDetectorTest` replays real traces to enforce it.
+  Change → edit both → `python harness.py` → update the test's expected times.
+- The Crack Sensitivity / min-crack-count sliders in Settings no longer affect detection
+  (TransientDetector/SpectralGate remain only for the live level + diagnostics). Pending
+  owner decision: remove or repurpose them.
 
-Plus a **4th (ML) gate** — a 3-class TFLite model (ambient/FC/SC) whose argmax
-decides crack *type* by sound.
+### ML status
+The v1 TFLite classifier was removed: it never loaded on device (heap ByteBuffer — TFLite
+needs a direct native-order buffer) and its on-device MFCCs didn't match training (int16 vs
+float scaling put c0 ~36σ off; filterbank normalisation). The rebuilt pipeline keeps ML
+viable for later: `features.py` (single source of truth) == `FeatureExtractor.kt`, pinned by
+`FeatureExtractorTest` (golden vectors from `make_golden.py`); `train_v2.py --eval` scores per
+roast, never per frame. With 18 labelled roasts a model did not beat the rule-based detector.
 
-**FC confirmation = sustained-roll detector** (not the clock). FC-classified
-pops go into a rolling 15s window (`fcPops`); FC fires when there are enough
-pops spread across ≥`FC_MIN_BUCKETS` (3) distinct 5s sub-windows. The
-"Earliest First Crack" time (`minFcTimeMin`) is **no longer a hard mute** — it's
-a confidence prior: *after* it, `FC_MIN_POPS_NORMAL` (5) pops confirm; *before*
-it, the stronger `FC_MIN_POPS_EARLY` (8) pops **plus** mean model FC-confidence
-≥ `FC_EARLY_MIN_CONFIDENCE` (0.50). This makes a **mid-roast app start** work
-(a real roll fires from the sound alone in ~10-15s) while still blocking the
-8-min CBR false-crack tick. All thresholds are `companion object` constants in
-`AudioAnalyzer`; `minTransientsFc` is now only a *floor* (`maxOf`) on the pop
-count. Confirmation lives in `registerFcPop`/`evaluateRoll`/`confirmFirstCrack`.
+### Training data workflow
+1. Record roasts with Settings → Record for Training; copy `training_*.wav/.json` into `training_data/raw/`.
+2. Label by ear (`make_clips.py` → `clips/player.html`), add to `labels.py` GROUND_TRUTH.
+3. `python extract.py` (pure numpy) → `features/*.npz`; `python harness.py` to score.
+Training JSON v2 measures every time from the start of the recorded audio (`"clock":"audio"`);
+v1 files mixed the pause-adjusted timer and session start, so their taps drift off the WAV.
 
-**SC** still uses the count-in-window path in `handleTransient` (10s window,
-`minTransientsSc`), guarded by the `MIN_FC_TO_SC_MS` (75s) floor.
-
-**Startup grace** (`FC_STARTUP_GRACE_MS`, 25s): the CBR spin-up makes ~10s of
-crack-like noise and consistently auto-fired a false FC at ~13.6s. FC confirmation
-is hard-muted for the first 25s (a real roll still fires ~10s after, so mid-roast
-starts are fine). Separate from `minFcTimeMin` (the soft confidence prior).
-
-**Manual FC reset**: tapping the FC-start chip calls `AudioAnalyzer.forceFirstCrack()`
-— it re-anchors the state machine to FIRST_CRACK_ACTIVE at the tap and the VM wipes
-any premature auto FC-end/SC. Manual FC always overrides a misfired auto FC (it no
-longer only back-fills when the app "missed" it).
-
-State machine: IDLE → MONITORING → FIRST_CRACK_ACTIVE → (quiet period) →
-FIRST_CRACK_COMPLETE → SECOND_CRACK_ACTIVE → COOLING.
+## Alerts
+Crack sound/vibration/notification are owned by the foreground service (`util/CrackAlarm`),
+not the Roast screen, so they fire with the screen off. SC alarm loops until "Stop alarm"
+(notification action / SC sheet / Start Cooling) or 2 min. Honours the Settings toggles.
 
 ## Design system — "Dark Coffee Lab"
 
@@ -172,4 +177,9 @@ don't change it without asking.
   reference roast shown as live FC/SC targets on the Roast screen with delta
   at FC; 1–5 cup rating in session detail; Favourites filter chip), release
   pipeline + in-app updater (above). DB schema v2.
-- Not yet implemented (deferred): ML-based crack classification.
+- v2 detection (impulsive-rate RollDetector) + service-owned alerts on branch fix/ml-detection.
+
+- Running git from the Cowork Linux shell: use `git --no-optional-locks` for read-only
+  commands — a plain `git status` there can leave a stale `.git/index.lock` it can't delete.
+- Debug install "Activity class ... does not exist" right after a successful install = the
+  phone hasn't been unlocked since reboot. Unlock it and Run again.
