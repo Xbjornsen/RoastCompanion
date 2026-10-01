@@ -25,3 +25,4 @@ training_data/clips/
 training_data/tempcam/
 __pycache__/
 .claude/settings.local.json
+training_data/features/

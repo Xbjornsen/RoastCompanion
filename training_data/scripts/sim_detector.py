@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Offline replica of AudioAnalyzer's FC path to see WHEN it fires FC on a
+"""LEGACY: replicates the removed v1 detector using TRAINING-side (librosa)
+features, not what the phone computed — which is how the feature mismatch stayed
+hidden. Use harness.py (rolldet.py == RollDetector.kt) instead.
+
+Offline replica of AudioAnalyzer's FC path to see WHEN it fires FC on a
 recording. Faithful to the app: 20 fps (50 ms frames), amplitude gate on a
 rolling lower-70th-pct ambient, spectral gate, 3-class model, sustained-roll
 detector, and the 25 s startup grace. Prints every FC fire it would produce."""
