@@ -72,6 +72,7 @@ class AudioAnalyzer @Inject constructor(
     // ---- Settings (loaded before each session) ----
     @Volatile var thresholdMultiplier: Float = UserPreferences.DEFAULT_THRESHOLD_MULTIPLIER  // diagnostics only
     @Volatile var fcQuietPeriodMs: Long = UserPreferences.DEFAULT_FC_QUIET_PERIOD_S * 1000L
+    @Volatile var sensitivity: Int = RollDetector.DEFAULT_SENSITIVITY
     @Volatile var minFcTimeMs: Long = UserPreferences.DEFAULT_MIN_FC_TIME_MIN * 60_000L
 
     // ---- Internal state (IO thread) ----
@@ -122,6 +123,7 @@ class AudioAnalyzer @Inject constructor(
         thresholdMultiplier = prefs.thresholdMultiplier.first()
         fcQuietPeriodMs = prefs.fcQuietPeriodS.first() * 1000L
         minFcTimeMs = prefs.minFcTimeMin.first() * 60_000L
+        sensitivity = prefs.crackSensitivity.first()
     }
 
     fun startSession() {
@@ -134,6 +136,7 @@ class AudioAnalyzer @Inject constructor(
         synchronized(rollLock) { roll = RollDetector(
             minFcSeconds = maxOf(0, (minFcTimeMs / 1000L).toInt() - EARLIEST_FC_SLACK_S),
             fcEndQuietS = (fcQuietPeriodMs / 1000L).toInt().coerceAtLeast(5),
+            sensitivity = sensitivity,
         ) }
         fcStartMs = 0L
         popsAtFc = 0L

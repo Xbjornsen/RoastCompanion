@@ -41,20 +41,14 @@ class SettingsViewModel @Inject constructor(
     private val updateChecker: UpdateChecker
 ) : ViewModel() {
 
-    val thresholdMultiplier: StateFlow<Float> = prefs.thresholdMultiplier
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_THRESHOLD_MULTIPLIER)
+    val crackSensitivity: StateFlow<Int> = prefs.crackSensitivity
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_CRACK_SENSITIVITY)
 
     val fcQuietPeriodS: StateFlow<Int> = prefs.fcQuietPeriodS
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_FC_QUIET_PERIOD_S)
 
     val carryoverDurationS: StateFlow<Int> = prefs.carryoverDurationS
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_CARRYOVER_DURATION_S)
-
-    val minTransientsFc: StateFlow<Int> = prefs.minTransientsFc
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_MIN_TRANSIENTS_FC)
-
-    val minTransientsSc: StateFlow<Int> = prefs.minTransientsSc
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_MIN_TRANSIENTS_SC)
 
     val alarmSoundEnabled: StateFlow<Boolean> = prefs.alarmSoundEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences.DEFAULT_ALARM_SOUND_ENABLED)
@@ -85,38 +79,12 @@ class SettingsViewModel @Inject constructor(
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages.asSharedFlow()
 
-    /**
-     * Suggested threshold derived from user-confirmed crack events.
-     * null = not enough data yet (< MIN_CONFIRM_EXAMPLES).
-     * Pair: (suggestedValue, exampleCount).
-     */
-    private val _learnedThreshold = MutableStateFlow<Pair<Float, Int>?>(null)
-    val learnedThreshold: StateFlow<Pair<Float, Int>?> = _learnedThreshold.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            val suggested = repository.computeSuggestedThreshold()
-            val count = repository.confirmationCount()
-            _learnedThreshold.value = suggested?.let { it to count }
-        }
-    }
-
-    fun applyLearnedThreshold() {
-        val value = _learnedThreshold.value?.first ?: return
-        viewModelScope.launch {
-            prefs.setThresholdMultiplier(value)
-            _messages.emit("Crack sensitivity updated to ×${"%.1f".format(value)}")
-        }
-    }
-
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
 
-    fun setThresholdMultiplier(v: Float) { viewModelScope.launch { prefs.setThresholdMultiplier(v) } }
+    fun setCrackSensitivity(v: Int)      { viewModelScope.launch { prefs.setCrackSensitivity(v) } }
     fun setFcQuietPeriodS(v: Int)        { viewModelScope.launch { prefs.setFcQuietPeriodS(v) } }
     fun setCarryoverDurationS(v: Int)    { viewModelScope.launch { prefs.setCarryoverDurationS(v) } }
-    fun setMinTransientsFc(v: Int)       { viewModelScope.launch { prefs.setMinTransientsFc(v) } }
-    fun setMinTransientsSc(v: Int)       { viewModelScope.launch { prefs.setMinTransientsSc(v) } }
     fun setAlarmSoundEnabled(v: Boolean) { viewModelScope.launch { prefs.setAlarmSoundEnabled(v) } }
     fun setVibrationEnabled(v: Boolean)  { viewModelScope.launch { prefs.setVibrationEnabled(v) } }
     fun setMinFcTimeMin(v: Int)          { viewModelScope.launch { prefs.setMinFcTimeMin(v) } }

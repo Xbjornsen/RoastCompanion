@@ -16,6 +16,7 @@ package com.roastcompanion.audio
  *       baseline = median rate over the 2 min ending 20 s ago, not before 4 min.
  *   SC: from 90 s after FC, pops in the last 10 s >= max(1.3 x baseline, baseline + 3)
  *       for 3 s, baseline = median over the last 60 s (since FC) ending 10 s ago.
+ * Crack Sensitivity (1..5) scales the 1.7/20 and 1.3/3 margins; 3 = as above.
  * FC end is informational: the rate falls back near the pre-FC baseline for 25 s.
  *
  * Pure Kotlin, time = frames fed (20/s), so it is deterministic and testable.
@@ -24,6 +25,8 @@ class RollDetector(
     /** Auto-FC can't fire before this many seconds of monitored audio (user prior). */
     private val minFcSeconds: Int = 0,
     private val fcEndQuietS: Int = FC_END_QUIET_S,
+    /** Settings "Crack Sensitivity" 1..5; 3 = the validated defaults (rolldet.params). */
+    sensitivity: Int = DEFAULT_SENSITIVITY,
 ) {
     enum class Event { FIRST_CRACK, FIRST_CRACK_END, SECOND_CRACK }
 
@@ -46,8 +49,17 @@ class RollDetector(
         const val SC_ABS_MIN = 3.0
         const val SC_HOLD_S = 3
         const val FC_END_QUIET_S = 25
+        const val DEFAULT_SENSITIVITY = 3
+        /** k scales how far the rate must rise: ratio' = 1 + (ratio - 1) * k, absMin' = absMin * k. */
+        private val SENS_K = doubleArrayOf(1.6, 1.3, 1.0, 0.8, 0.6)
         private val MAX_WIN_FRAMES = maxOf(FC_WIN_S, SC_WIN_S) * FPS
     }
+
+    private val k = SENS_K[sensitivity.coerceIn(1, 5) - 1]
+    private val fcRatio = 1 + (FC_RATIO - 1) * k
+    private val fcAbsMin = FC_ABS_MIN * k
+    private val scRatio = 1 + (SC_RATIO - 1) * k
+    private val scAbsMin = SC_ABS_MIN * k
 
     private enum class Phase { MONITORING, FIRST_CRACK, FIRST_CRACK_DONE, SECOND_CRACK }
 
@@ -111,7 +123,7 @@ class RollDetector(
             val lo = maxOf(0, s - FC_BASE_SPAN_S); val hi = s - FC_BASE_GAP_S
             if (hi - lo < FC_MIN_BASE_S) return null
             val b = median(rFc, lo, hi)
-            return if (rFc[s] >= maxOf(FC_RATIO * b, b + FC_ABS_MIN)) {
+            return if (rFc[s] >= maxOf(fcRatio * b, b + fcAbsMin)) {
                 streak++
                 if (streak >= FC_HOLD_S) { enterFc(s); Event.FIRST_CRACK } else null
             } else { streak = 0; null }
@@ -126,7 +138,7 @@ class RollDetector(
         val lo = maxOf(fcSecond, s - SC_BASE_SPAN_S); val hi = s - SC_BASE_GAP_S
         if (hi <= lo) return ev
         val b = median(rSc, lo, hi)
-        if (rSc[s] >= maxOf(SC_RATIO * b, b + SC_ABS_MIN)) {
+        if (rSc[s] >= maxOf(scRatio * b, b + scAbsMin)) {
             streak++
             if (streak >= SC_HOLD_S) { phase = Phase.SECOND_CRACK; return Event.SECOND_CRACK }
         } else streak = 0

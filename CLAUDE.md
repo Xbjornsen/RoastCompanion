@@ -82,9 +82,11 @@ Pipeline: `RoastMonitorService` reads 50 ms frames (2205 samples) → `AudioAnal
 - **Constants live in TWO places that must match:** `audio/RollDetector.kt` and
   `training_data/scripts/rolldet.py`. `RollDetectorTest` replays real traces to enforce it.
   Change → edit both → `python harness.py` → update the test's expected times.
-- The Crack Sensitivity / min-crack-count sliders in Settings no longer affect detection
-  (TransientDetector/SpectralGate remain only for the live level + diagnostics). Pending
-  owner decision: remove or repurpose them.
+- Settings "Crack Sensitivity" (pref `crack_sensitivity`, 1..5, default 3) scales the FC/SC
+  margins: ratio' = 1 + (ratio-1)*k, absMin' = absMin*k, k = 1.6/1.3/1.0/0.8/0.6 (same table
+  in rolldet.SENS_K). `harness.py --sensitivity N`: 1 → FC 5/18, 2 → 9/18, 3 → 11/18,
+  4 → 12/18 (but SC 1 early), 5 → FC 4 early. The old min-crack-count sliders were removed;
+  TransientDetector/SpectralGate (thresholdMultiplier, no UI) only drive level + diagnostics.
 
 ### ML status
 The v1 TFLite classifier was removed: it never loaded on device (heap ByteBuffer — TFLite

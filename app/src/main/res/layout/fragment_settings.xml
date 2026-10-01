@@ -227,44 +227,11 @@
                     android:id="@+id/slider_threshold"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:valueFrom="1.0"
-                    android:valueTo="10.0"
-                    android:stepSize="0.5"
+                    android:valueFrom="1"
+                    android:valueTo="5"
+                    android:stepSize="1"
                     app:labelBehavior="gone"
                     android:layout_marginTop="4dp" />
-
-                <!-- Learned threshold row — visible only when enough confirmed data -->
-                <LinearLayout
-                    android:id="@+id/row_learned_threshold"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="10dp"
-                    android:visibility="gone">
-
-                    <TextView
-                        android:id="@+id/tv_learned_threshold"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:textColor="@color/lab_mint"
-                        android:textSize="11sp"
-                        android:fontFamily="monospace" />
-
-                    <TextView
-                        android:id="@+id/btn_apply_learned"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Apply"
-                        android:textColor="@color/lab_mint"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="6dp"
-                        android:background="@drawable/bg_chip"
-                        android:layout_marginStart="8dp" />
-                </LinearLayout>
             </LinearLayout>
 
             <View
@@ -389,127 +356,6 @@
                     android:layout_marginTop="4dp" />
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/lab_border" />
-
-            <!-- FC cracks before trigger -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="10dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/min_transients_fc"
-                        android:textColor="@color/lab_text"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tv_min_fc_value"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/lab_amber"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        android:fontFamily="monospace"
-                        android:background="@drawable/bg_phase_pill"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="3dp" />
-                </LinearLayout>
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/min_transients_fc_desc"
-                    android:textColor="@color/lab_text_muted"
-                    android:textSize="11sp"
-                    android:lineSpacingExtra="2dp"
-                    android:layout_marginTop="4dp" />
-
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/slider_min_fc"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:valueFrom="1"
-                    android:valueTo="10"
-                    android:stepSize="1"
-                    app:labelBehavior="gone"
-                    android:layout_marginTop="4dp" />
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/lab_border" />
-
-            <!-- SC cracks before trigger -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="10dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/min_transients_sc"
-                        android:textColor="@color/lab_text"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tv_min_sc_value"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/lab_amber"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        android:fontFamily="monospace"
-                        android:background="@drawable/bg_phase_pill"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="3dp" />
-                </LinearLayout>
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/min_transients_sc_desc"
-                    android:textColor="@color/lab_text_muted"
-                    android:textSize="11sp"
-                    android:lineSpacingExtra="2dp"
-                    android:layout_marginTop="4dp" />
-
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/slider_min_sc"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:valueFrom="1"
-                    android:valueTo="5"
-                    android:stepSize="1"
-                    app:labelBehavior="gone"
-                    android:layout_marginTop="4dp" />
-            </LinearLayout>
         </LinearLayout>
 
         <!-- ════════ COOLING ════════ -->

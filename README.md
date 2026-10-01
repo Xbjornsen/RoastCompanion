@@ -34,23 +34,20 @@ Built for personal use by an experienced home roaster — no onboarding, no fluf
 - Action buttons (Start / Pause / Stop / Reset) are pinned in a fixed footer, always reachable without scrolling
 
 ### First & Second Crack Detection
-Detection combines five gates — a frame only counts toward a crack when all agree:
+A crack is a 1–5 ms pop. Every 50 ms frame gets an **impulsiveness** score (how far its loudest millisecond stands above the rest); a frame above the bar counts as a pop. The detector watches the **pop rate** and fires when it climbs well above *this roast's own* recent baseline and stays there — so it adapts to phone placement and mic gain instead of relying on absolute loudness.
 
-1. **Warmup** — the first 3s of a session build the ambient noise floor; nothing detects during warmup
-2. **Amplitude** — RMS must exceed the ambient floor × a sensitivity multiplier
-3. **Spectrum** — an FFT checks that enough energy sits in the 2–9 kHz band where cracks live (rejects voices, fan, thuds)
-4. **ML classifier** — a tiny 3-class TFLite model (ambient / first crack / second crack) decides the crack *type* by sound, not by timing
-5. **Time / pattern gates** — first crack is ignored before a configurable earliest time; confirmation needs several transients spread over time (real crack rolls, not a burst of clicks)
-
-- First crack logs **start** and (after a sustained quiet period) **end** + duration
+- **First crack:** pops in the last 20 s rise above 1.7× (and +20 over) the median of the preceding 2 min, for 5 s; never before *Earliest First Crack* − 1 min
+- **First crack end:** the rate falls back near the pre-crack baseline for the *FC Quiet Period*
+- **Second crack:** from 90 s after first crack, pops in the last 10 s rise above 1.3× (and +3 over) the post-FC baseline, for 3 s
+- **Crack Sensitivity** (1–5) scales those margins; 3 is the tuned default
+- Tapping **FC start** re-anchors first crack to now, and second-crack timing follows from there
 - The roast cards **flood with colour** as progress bars: first crack fills across the FC→SC stretch, second crack fills toward your pull point, paced by your reference roast
-- On second crack: a **loud device alarm** + vibration + a themed **alert sheet** with a big "Silence & dismiss" button
+- On second crack: a looping **alarm** + vibration + a heads-up notification with **Stop alarm** — raised by the background service, so it works with the screen off (caps at 2 min)
 
-### Crack Classifier & Training Pipeline
-- The classifier is a ~15 KB TFLite model with 15 features per 50 ms frame (13 MFCCs + log-RMS + 2–9 kHz spectral ratio), shipped in `app/src/main/assets/`
-- **Record roasts for training** (Settings → Training, off by default) saves a WAV + a JSON of confirmed crack timestamps per session to the app's external files dir
-- Recordings can be shared from session detail and pulled to a workstation; `training_data/scripts/train.py` labels them, trains the 3-class model, and exports the TFLite + normalization params
-- The model improves with every recorded roast — see [Audio Detection Algorithm](#audio-detection-algorithm)
+### Detection Accuracy & Training
+- `training_data/scripts/harness.py` replays the detector over every by-ear-labelled roast. On 18 roasts at sensitivity 3: first crack 11/18 within −30..+60 s with none early; second crack after a manual FC tap 9/16 within ±30 s, none early or late
+- **Record roasts for training** (Settings → Training, off by default) saves a WAV + a JSON of crack timestamps (measured on the audio clock) per session; more labelled roasts is the biggest lever for accuracy
+- The detector exists twice — `audio/RollDetector.kt` and `training_data/scripts/rolldet.py` — and unit tests replay real roast traces to keep them identical
 
 ### Reference Roast
 - Star a roast ★ as a favourite to make it the **reference** — its FC/SC times show as live targets on the Roast screen and set the pacing for the progress bars
@@ -68,11 +65,9 @@ Detection combines five gates — a frame only counts toward a crack when all ag
 ### Settings
 | Setting | Default | Description |
 |---|---|---|
-| Crack Sensitivity | 3.5× | Spike must exceed N × ambient noise floor |
-| Earliest First Crack | 9 min | Cracks ignored before this point — the CBR-101 never reaches FC earlier |
+| Crack Sensitivity | 3 | 1–5: how readily first/second crack are called (raise if missed/late, lower if early) |
+| Earliest First Crack | 9 min | Auto first crack can fire at most 1 min before this |
 | FC Quiet Period | 25s | Sustained quiet after FC activity before FC is marked complete |
-| Min Transients (FC) | 2 | Transients required (spread over time) to confirm first crack |
-| Min Transients (SC) | 2 | Transients required to confirm second crack |
 | Record roasts for training | Off | Save WAV + label JSON per roast for model training |
 | Keep Screen Awake | On | Only while a roast is active |
 | Alarm Sound / Vibration | On | Alert on crack events |
@@ -85,34 +80,26 @@ The engine runs entirely on-device with no network dependency.
 
 **Capture:** AudioRecord at 44100 Hz, 16-bit PCM mono, read in 50 ms windows (2205 samples) → 20 analysis frames/second.
 
-**Noise floor:** a rolling deque of the last 100 RMS frames (~5s); the ambient estimate uses the **lower 70th percentile**, updated only from non-spike frames so cracking doesn't inflate the baseline.
+**Impulsiveness:** the frame's 2nd difference (a high-pass that keeps clicks, drops fan rumble) is split into 50 one-millisecond blocks; score = ln(max block energy / median block energy). A pop is a frame scoring > 3.5.
 
-**Per-frame gates (all must pass):**
-- **Amplitude** — `RMS > ambient × sensitivity`. Second crack is quieter than first, so a lower amplitude bar (1.8×) is used once the app is listening for SC.
-- **Spectral** — a 2048-pt FFT; ≥12% of audible energy must fall in 2–9 kHz (cracks are high-frequency pops; motor/fan/thuds score near zero).
-- **ML classifier** — the surviving frame is run through the 3-class TFLite model; its argmax decides ambient / FC / SC. Because the model judges *type by sound*, a continuing first-crack roll is classified FC and can't be mistaken for second crack.
-
-**Time & pattern gates:**
-- First crack is ignored before **Earliest First Crack** (default 9 min).
-- FC confirmation needs several transients **spread over ≥4s** within a 15s window — a real crack rolls; a burst of clicks doesn't qualify.
-- Second crack can't be declared within **75s** of first crack (a hard floor against the FC-roll-misread-as-SC cascade).
+**Rates & baselines:** pops are counted over a sliding 20 s (FC) and 10 s (SC) window, sampled once per second. Baselines are medians of those per-second rates over a recent span that ends a little before "now", so the rise being tested isn't part of its own baseline.
 
 **State machine:**
 ```
 IDLE → [Start] → MONITORING
-MONITORING → [FC-class transients, after earliest-FC time] → FIRST_CRACK_ACTIVE
-FIRST_CRACK_ACTIVE → [quiet period elapsed] → FIRST_CRACK_COMPLETE
-FIRST_CRACK_COMPLETE → [SC-class transients, ≥75s after FC] → SECOND_CRACK_ACTIVE
+MONITORING → [pop rate ≫ baseline for 5 s, after the earliest-FC floor] → FIRST_CRACK_ACTIVE
+FIRST_CRACK_ACTIVE → [rate back near baseline for the quiet period] → FIRST_CRACK_COMPLETE
+FIRST_CRACK_* → [10 s rate ≫ post-FC baseline for 3 s, ≥90 s after FC] → SECOND_CRACK_ACTIVE
 SECOND_CRACK_ACTIVE → [Start cooling] → COOLING
 ```
 
-**Training:** the model is trained from real recorded roasts (`training_data/scripts/train.py`). Labels come only from human-verified crack times; the trainer extracts MFCC + RMS + spectral features per frame, class-weights the heavily imbalanced data (ambient ≫ FC ≫ SC), and exports a float TFLite model plus a `feature_norm.json` of per-feature mean/std. The recorded alarm tone is automatically blanked out of the labels so the model never learns its own alarm as a crack.
+The live level meter and the "×ratio / spec" diagnostics on the Roast screen come from the older amplitude + spectral gates, which no longer decide anything.
 
 ---
 
 ## Usage Tips
 
-- **Phone placement:** the **exhaust side** of the CBR-101 gives the best read — the vent channels crack sound and sits away from the bulk fan roar. Keep the same placement every roast so the model's learned thresholds transfer.
+- **Phone placement:** the **exhaust side** of the CBR-101 gives the best read — the vent channels crack sound and sits away from the bulk fan roar. Keep the same placement every roast so recordings stay comparable.
 - **Reference roast:** star a good roast ★ so the Roast screen shows live FC/SC targets and the progress bars pace correctly.
 - **Recording for training:** turn on Settings → Training before a roast to capture a WAV + label JSON; the more roasts you record, the sharper detection gets — second crack especially, since it's the hardest to capture.
 - **Second crack timing:** SC on the CBR-101 is quieter and snappier than FC. If you pull right as it starts, the detection has only the onset to work with — that's expected.
@@ -128,13 +115,12 @@ SECOND_CRACK_ACTIVE → [Start cooling] → COOLING
 | UI | Material Design 3, ViewBinding |
 | Navigation | Navigation Component 2.7.7 + Safe Args |
 | Audio | AudioRecord API + custom FFT |
-| ML | TensorFlow Lite 2.14 (3-class crack classifier) |
 | Database | Room 2.6.1 (KSP) |
 | Settings | DataStore Preferences 1.1.1 |
 | DI | Hilt 2.51.1 |
 | Async | Coroutines + Flow |
 | Charts | MPAndroidChart 3.1.0 |
-| Training | Python (TensorFlow, librosa, scikit-learn) |
+| Training / evaluation | Python (numpy; TensorFlow + librosa for the experimental classifier) |
 
 ---
 
@@ -142,13 +128,13 @@ SECOND_CRACK_ACTIVE → [Start cooling] → COOLING
 
 ```
 app/src/main/
-├── assets/                         # crack_detector.tflite + feature_norm.json
 └── java/com/roastcompanion/
     ├── audio/
-    │   ├── AudioAnalyzer.kt        # AudioRecord loop, gates, state machine, flows
-    │   ├── TransientDetector.kt    # RMS, rolling ambient, amplitude gate
+    │   ├── AudioAnalyzer.kt        # per-frame pipeline, phase state, flows
+    │   ├── TransientDetector.kt    # RMS + rolling ambient (level meter, diagnostics)
     │   ├── SpectralGate.kt         # FFT, 2–9 kHz crack-band ratio
-    │   ├── CrackClassifier.kt      # TFLite 3-class model (MFCC/RMS/spectral features)
+    │   ├── FeatureExtractor.kt     # impulsiveness + feature spec v2 (port of features.py)
+    │   ├── RollDetector.kt         # pop-rate FC/SC detector (port of rolldet.py)
     │   ├── RoastPhase.kt           # State machine phases
     │   └── CrackEvent.kt           # Sealed class: FC started/ended, SC started
     ├── data/                       # Room (entity/DAO), RoastRepository, DataStore prefs
@@ -159,12 +145,13 @@ app/src/main/
     │   ├── log/                    # Session list, detail, adapter
     │   ├── settings/               # Settings
     │   └── guide/                  # Roasting 101 reference
-    └── util/                       # Notification, Permission, TimeFormatter
+    └── util/                       # CrackAlarm, Notification, Permission, TimeFormatter
 
 training_data/
-├── scripts/                        # train.py, make_clips.py, requirements.txt
+├── scripts/                        # extract.py, harness.py, rolldet.py, features.py, labels.py, train_v2.py
 ├── raw/                            # recorded WAV + JSON pairs (gitignored)
-└── model/                          # trained TFLite output (gitignored)
+├── features/                       # extracted per-roast features (gitignored)
+└── model/                          # experimental classifier output (gitignored)
 ```
 
 `AudioAnalyzer` is a Hilt singleton shared between the foreground service (which writes audio into it and optionally records a WAV) and the ViewModels (which collect its `StateFlow`/`SharedFlow` outputs) — no service binding required.

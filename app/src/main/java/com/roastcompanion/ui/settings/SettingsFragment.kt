@@ -42,6 +42,14 @@ class SettingsFragment : Fragment() {
         ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let { viewModel.importHistory(it) } }
 
+    private fun sensitivityLabel(v: Int) = when (v) {
+        1 -> "1 · Low"
+        2 -> "2"
+        3 -> "3 · Default"
+        4 -> "4"
+        else -> "5 · High"
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
         return binding.root
@@ -51,8 +59,8 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.sliderThreshold.addOnChangeListener { _, value, fromUser ->
-            if (fromUser && !updatingFromVm) viewModel.setThresholdMultiplier(value)
-            binding.tvThresholdValue.text = "×%.1f".format(value)
+            if (fromUser && !updatingFromVm) viewModel.setCrackSensitivity(value.toInt())
+            binding.tvThresholdValue.text = sensitivityLabel(value.toInt())
         }
         binding.sliderFcQuiet.addOnChangeListener { _, value, fromUser ->
             if (fromUser && !updatingFromVm) viewModel.setFcQuietPeriodS(value.toInt())
@@ -65,14 +73,6 @@ class SettingsFragment : Fragment() {
         binding.sliderCarryover.addOnChangeListener { _, value, fromUser ->
             if (fromUser && !updatingFromVm) viewModel.setCarryoverDurationS(value.toInt())
             binding.tvCarryoverValue.text = "${value.toInt()}s"
-        }
-        binding.sliderMinFc.addOnChangeListener { _, value, fromUser ->
-            if (fromUser && !updatingFromVm) viewModel.setMinTransientsFc(value.toInt())
-            binding.tvMinFcValue.text = "${value.toInt()}"
-        }
-        binding.sliderMinSc.addOnChangeListener { _, value, fromUser ->
-            if (fromUser && !updatingFromVm) viewModel.setMinTransientsSc(value.toInt())
-            binding.tvMinScValue.text = "${value.toInt()}"
         }
         binding.switchAlarmSound.setOnCheckedChangeListener { _, checked ->
             if (!updatingFromVm) viewModel.setAlarmSoundEnabled(checked)
@@ -88,9 +88,6 @@ class SettingsFragment : Fragment() {
         }
         binding.btnResetDefaults.setOnClickListener {
             viewModel.resetDefaults()
-        }
-        binding.btnApplyLearned.setOnClickListener {
-            viewModel.applyLearnedThreshold()
         }
         binding.btnGuide.setOnClickListener {
             findNavController().navigate(R.id.guideFragment)
@@ -121,10 +118,10 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.thresholdMultiplier.collect { v ->
+                    viewModel.crackSensitivity.collect { v ->
                         updatingFromVm = true
-                        binding.sliderThreshold.value = v
-                        binding.tvThresholdValue.text = "×%.1f".format(v)
+                        binding.sliderThreshold.value = v.toFloat()
+                        binding.tvThresholdValue.text = sensitivityLabel(v)
                         updatingFromVm = false
                     }
                 }
@@ -149,22 +146,6 @@ class SettingsFragment : Fragment() {
                         updatingFromVm = true
                         binding.sliderCarryover.value = v.toFloat()
                         binding.tvCarryoverValue.text = "${v}s"
-                        updatingFromVm = false
-                    }
-                }
-                launch {
-                    viewModel.minTransientsFc.collect { v ->
-                        updatingFromVm = true
-                        binding.sliderMinFc.value = v.toFloat()
-                        binding.tvMinFcValue.text = "$v"
-                        updatingFromVm = false
-                    }
-                }
-                launch {
-                    viewModel.minTransientsSc.collect { v ->
-                        updatingFromVm = true
-                        binding.sliderMinSc.value = v.toFloat()
-                        binding.tvMinScValue.text = "$v"
                         updatingFromVm = false
                     }
                 }
@@ -202,18 +183,6 @@ class SettingsFragment : Fragment() {
                     }
                 }
 
-                launch {
-                    viewModel.learnedThreshold.collect { data ->
-                        if (data == null) {
-                            binding.rowLearnedThreshold.visibility = View.GONE
-                        } else {
-                            val (value, count) = data
-                            binding.rowLearnedThreshold.visibility = View.VISIBLE
-                            binding.tvLearnedThreshold.text =
-                                "Learned from $count cracks: ×${"%.1f".format(value)}"
-                        }
-                    }
-                }
                 launch {
                     viewModel.updateState.collect { renderUpdateState(it) }
                 }

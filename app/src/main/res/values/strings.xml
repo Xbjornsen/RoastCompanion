@@ -87,7 +87,7 @@
     <string name="section_data">Your Data</string>
 
     <string name="threshold_multiplier">Crack Sensitivity</string>
-    <string name="threshold_multiplier_desc">Higher = only louder sounds count as a crack. Lower if your roaster is quiet, raise if you get false positives.</string>
+    <string name="threshold_multiplier_desc">How readily the app calls first and second crack. Raise it if cracks are missed or called late; lower it if they are called too early. 3 suits most roasts.</string>
 
     <string name="min_fc_time">Earliest First Crack</string>
     <string name="min_fc_time_desc">Cracks are ignored before this point in the roast — the CBR-101 never reaches first crack this early.</string>
@@ -97,12 +97,6 @@
 
     <string name="carryover_duration">Cooling Carryover</string>
     <string name="carryover_duration_desc">How long the bean keeps roasting after the CBR-101 starts its cool cycle.</string>
-
-    <string name="min_transients_fc">First Crack — Cracks Before Trigger</string>
-    <string name="min_transients_fc_desc">How many cracks the app needs to hear in 3 seconds before confirming first crack.</string>
-
-    <string name="min_transients_sc">Second Crack — Cracks Before Trigger</string>
-    <string name="min_transients_sc_desc">How many cracks in 3 seconds before confirming second crack.</string>
 
     <string name="alarm_sound_enabled">Sound Alarm</string>
     <string name="alarm_sound_desc">Play phone\'s alarm tone at second crack</string>
