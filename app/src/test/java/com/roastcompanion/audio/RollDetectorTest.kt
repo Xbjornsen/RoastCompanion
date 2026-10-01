@@ -20,8 +20,8 @@ class RollDetectorTest {
             .map { it.trim().toFloat() }.toFloatArray()
 
     /** Feeds a trace; returns first-crack / second-crack times in ms of fed audio. */
-    private fun run(imp: FloatArray, minFcSeconds: Int, forceFcAtMs: Long? = null): Map<String, Long> {
-        val d = RollDetector(minFcSeconds)
+    private fun run(imp: FloatArray, minFcSeconds: Int, forceFcAtMs: Long? = null, sensitivity: Int = 3): Map<String, Long> {
+        val d = RollDetector(minFcSeconds, sensitivity = sensitivity)
         val ev = HashMap<String, Long>()
         var forced = false
         for ((i, v) in imp.withIndex()) {
@@ -47,6 +47,23 @@ class RollDetectorTest {
         val ev = run(trace("roll_trace_s23.txt"), minFcSeconds = 480)
         assertEquals(619_000L, ev["FC"])   // by-ear FC 10:15
         assertEquals(734_000L, ev["SC"])   // by-ear SC 12:19
+    }
+
+    @Test
+    fun sensitivityLevelsMatchReference() {
+        // rolldet.run(trace, min_fc_s=480, p=rolldet.params(level)) for levels 1..5
+        val s5 = trace("roll_trace_s5.txt")
+        val s23 = trace("roll_trace_s23.txt")
+        val exp5 = listOf(mapOf("FC" to 585_000L), mapOf("FC" to 578_000L, "SC" to 724_000L),
+            mapOf("FC" to 573_000L, "SC" to 724_000L), mapOf("FC" to 572_000L, "SC" to 724_000L),
+            mapOf("FC" to 560_000L, "SC" to 683_000L))
+        val exp23 = listOf(mapOf("FC" to 753_000L), mapOf("FC" to 624_000L, "SC" to 734_000L),
+            mapOf("FC" to 619_000L, "SC" to 734_000L), mapOf("FC" to 611_000L, "SC" to 731_000L),
+            mapOf("FC" to 599_000L, "SC" to 729_000L))
+        for (level in 1..5) {
+            assertEquals("s5 level $level", exp5[level - 1], run(s5, 480, sensitivity = level))
+            assertEquals("s23 level $level", exp23[level - 1], run(s23, 480, sensitivity = level))
+        }
     }
 
     @Test

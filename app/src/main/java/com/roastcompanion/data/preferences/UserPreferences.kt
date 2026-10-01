@@ -20,8 +20,7 @@ class UserPreferences @Inject constructor(
         val KEY_THRESHOLD_MULTIPLIER = floatPreferencesKey("threshold_multiplier")
         val KEY_FC_QUIET_PERIOD_S    = intPreferencesKey("fc_quiet_period_s")
         val KEY_CARRYOVER_DURATION_S = intPreferencesKey("carryover_duration_s")
-        val KEY_MIN_TRANSIENTS_FC    = intPreferencesKey("min_transients_fc")
-        val KEY_MIN_TRANSIENTS_SC    = intPreferencesKey("min_transients_sc")
+        val KEY_CRACK_SENSITIVITY    = intPreferencesKey("crack_sensitivity")
         val KEY_ALARM_SOUND_ENABLED  = booleanPreferencesKey("alarm_sound_enabled")
         val KEY_VIBRATION_ENABLED    = booleanPreferencesKey("vibration_enabled")
         val KEY_MIN_FC_TIME_MIN      = intPreferencesKey("min_fc_time_min")
@@ -33,8 +32,7 @@ class UserPreferences @Inject constructor(
         const val DEFAULT_THRESHOLD_MULTIPLIER = 1.5f
         const val DEFAULT_FC_QUIET_PERIOD_S    = 25
         const val DEFAULT_CARRYOVER_DURATION_S = 45
-        const val DEFAULT_MIN_TRANSIENTS_FC    = 2
-        const val DEFAULT_MIN_TRANSIENTS_SC    = 2
+        const val DEFAULT_CRACK_SENSITIVITY    = 3   // 1..5, see RollDetector
         const val DEFAULT_ALARM_SOUND_ENABLED  = true
         const val DEFAULT_VIBRATION_ENABLED    = true
         const val DEFAULT_MIN_FC_TIME_MIN      = 9
@@ -53,11 +51,8 @@ class UserPreferences @Inject constructor(
     val carryoverDurationS: Flow<Int> = context.dataStore.data.map {
         it[KEY_CARRYOVER_DURATION_S] ?: DEFAULT_CARRYOVER_DURATION_S
     }
-    val minTransientsFc: Flow<Int> = context.dataStore.data.map {
-        it[KEY_MIN_TRANSIENTS_FC] ?: DEFAULT_MIN_TRANSIENTS_FC
-    }
-    val minTransientsSc: Flow<Int> = context.dataStore.data.map {
-        it[KEY_MIN_TRANSIENTS_SC] ?: DEFAULT_MIN_TRANSIENTS_SC
+    val crackSensitivity: Flow<Int> = context.dataStore.data.map {
+        (it[KEY_CRACK_SENSITIVITY] ?: DEFAULT_CRACK_SENSITIVITY).coerceIn(1, 5)
     }
     val alarmSoundEnabled: Flow<Boolean> = context.dataStore.data.map {
         it[KEY_ALARM_SOUND_ENABLED] ?: DEFAULT_ALARM_SOUND_ENABLED
@@ -90,11 +85,8 @@ class UserPreferences @Inject constructor(
     suspend fun setCarryoverDurationS(value: Int) {
         context.dataStore.edit { it[KEY_CARRYOVER_DURATION_S] = value }
     }
-    suspend fun setMinTransientsFc(value: Int) {
-        context.dataStore.edit { it[KEY_MIN_TRANSIENTS_FC] = value }
-    }
-    suspend fun setMinTransientsSc(value: Int) {
-        context.dataStore.edit { it[KEY_MIN_TRANSIENTS_SC] = value }
+    suspend fun setCrackSensitivity(value: Int) {
+        context.dataStore.edit { it[KEY_CRACK_SENSITIVITY] = value.coerceIn(1, 5) }
     }
     suspend fun setAlarmSoundEnabled(value: Boolean) {
         context.dataStore.edit { it[KEY_ALARM_SOUND_ENABLED] = value }
@@ -122,8 +114,7 @@ class UserPreferences @Inject constructor(
             prefs[KEY_THRESHOLD_MULTIPLIER] = DEFAULT_THRESHOLD_MULTIPLIER
             prefs[KEY_FC_QUIET_PERIOD_S]    = DEFAULT_FC_QUIET_PERIOD_S
             prefs[KEY_CARRYOVER_DURATION_S] = DEFAULT_CARRYOVER_DURATION_S
-            prefs[KEY_MIN_TRANSIENTS_FC]    = DEFAULT_MIN_TRANSIENTS_FC
-            prefs[KEY_MIN_TRANSIENTS_SC]    = DEFAULT_MIN_TRANSIENTS_SC
+            prefs[KEY_CRACK_SENSITIVITY]    = DEFAULT_CRACK_SENSITIVITY
             prefs[KEY_ALARM_SOUND_ENABLED]  = DEFAULT_ALARM_SOUND_ENABLED
             prefs[KEY_VIBRATION_ENABLED]    = DEFAULT_VIBRATION_ENABLED
             prefs[KEY_MIN_FC_TIME_MIN]      = DEFAULT_MIN_FC_TIME_MIN

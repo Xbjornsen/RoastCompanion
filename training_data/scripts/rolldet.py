@@ -10,6 +10,15 @@ P = dict(
     sc_ratio=1.3, sc_abs_min=3, sc_hold_s=3,
     fc_end_quiet_s=25,
 )
+# Settings → "Crack Sensitivity" 1..5 (3 = the validated defaults above). k scales how far
+# the pop rate must rise above baseline: ratio' = 1 + (ratio - 1) * k, abs_min' = abs_min * k.
+SENS_K = {1: 1.6, 2: 1.3, 3: 1.0, 4: 0.8, 5: 0.6}
+def params(sensitivity=3):
+    k = SENS_K[sensitivity]; p = dict(P)
+    for side in ("fc", "sc"):
+        p[f"{side}_ratio"] = 1 + (P[f"{side}_ratio"] - 1) * k
+        p[f"{side}_abs_min"] = P[f"{side}_abs_min"] * k
+    return p
 class RollDetector:
     def __init__(self, p=P, min_fc_s=0):
         self.p = p; self.min_fc_s = min_fc_s

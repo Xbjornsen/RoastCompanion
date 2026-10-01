@@ -27,27 +27,30 @@ def main():
     ap.add_argument("--features", default=str(C.Path(__file__).parent.parent / "features"))
     ap.add_argument("--earliest-fc-min", type=float, default=9.0,
                     help="app setting 'Earliest First Crack' (auto FC floor = this - 60 s)")
+    ap.add_argument("--sensitivity", type=int, default=3, choices=[1, 2, 3, 4, 5],
+                    help="app setting 'Crack Sensitivity' (3 = default)")
     a = ap.parse_args()
+    p = RD.params(a.sensitivity)
     floor = max(0, int(a.earliest_fc_min * 60) - 60)
     S = C.load_sessions(a.features)
     fc_rows, sc_auto, sc_tap = [], [], []
     print(f"{'sess':>4} {'GT FC':>6} {'app FC':>7} {'err':>6} | {'GT SC':>6} {'app SC':>7} {'err':>6} | {'SC after tap':>12}")
     for s in S:
         if s.kind == "negative":
-            ev = RD.run(s.streams[0]["imp"], min_fc_s=0)
+            ev = RD.run(s.streams[0]["imp"], min_fc_s=0, p=p)
             print(f"empty-roaster run {s.sid}: {'no events (good)' if not ev else ev}")
             continue
         if s.kind != "gt":
             continue
         g = s.gt
-        ev = RD.run(s.streams[0]["imp"], min_fc_s=floor)
+        ev = RD.run(s.streams[0]["imp"], min_fc_s=floor, p=p)
         efc = None if "FC" not in ev else (ev["FC"] - g["FC_START"]) / 1000
         fc_rows.append(cls(efc, -30, 60))
         sc = g.get("SC_START")
         esc = etap = None
         if sc:
             esc = None if "SC" not in ev else (ev["SC"] - sc) / 1000
-            tap = RD.run(s.streams[0]["imp"], min_fc_s=10**9, force_fc_ms=g["FC_START"] + 3000)
+            tap = RD.run(s.streams[0]["imp"], min_fc_s=10**9, force_fc_ms=g["FC_START"] + 3000, p=p)
             etap = None if "SC" not in tap else (tap["SC"] - sc) / 1000
             sc_auto.append(cls(esc, -20, 30)); sc_tap.append(cls(etap, -20, 30))
         f = lambda e: "" if e is None else f"{e:+.0f}s"
