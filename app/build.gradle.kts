@@ -116,9 +116,6 @@ dependencies {
     // MPAndroidChart
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
-    // TFLite — crack classifier
-    implementation("org.tensorflow:tensorflow-lite:2.14.0")
-
     // CameraX — Temp Cam dev capture (records the CBR LED display for 7-seg OCR)
     implementation("androidx.camera:camera-core:1.3.4")
     implementation("androidx.camera:camera-camera2:1.3.4")
