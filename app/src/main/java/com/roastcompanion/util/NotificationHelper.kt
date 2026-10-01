@@ -80,14 +80,26 @@ class NotificationHelper @Inject constructor(
         manager.notify(NOTIF_ID_MONITOR, notification)
     }
 
+    /** Heads-up SC alert with a "Stop alarm" action (handled by RoastMonitorService). */
     fun fireSecondCrackAlarm() {
+        val stop = PendingIntent.getService(
+            context, 1,
+            Intent(context, com.roastcompanion.service.RoastMonitorService::class.java)
+                .setAction(com.roastcompanion.service.RoastMonitorService.ACTION_STOP_ALARM),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         val notification = NotificationCompat.Builder(context, CHANNEL_ALARM)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.alert_sc_detected))
             .setContentText(context.getString(R.string.action_start_cooling))
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
             .setContentIntent(mainActivityIntent())
+            .addAction(0, context.getString(R.string.action_stop_alarm), stop)
             .build()
         manager.notify(NOTIF_ID_ALARM, notification)
     }
+
+    fun cancelSecondCrackAlarm() = manager.cancel(NOTIF_ID_ALARM)
 }

@@ -9,6 +9,7 @@ import com.roastcompanion.audio.RoastPhase
 import com.roastcompanion.data.db.entity.CrackConfirmation
 import com.roastcompanion.data.db.entity.RoastSession
 import com.roastcompanion.data.preferences.UserPreferences
+import com.roastcompanion.util.CrackAlarm
 import com.roastcompanion.data.repository.RoastRepository
 import com.roastcompanion.model.CarryoverState
 import com.roastcompanion.model.CookingCarryover
@@ -43,7 +44,8 @@ class RoastViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val audioAnalyzer: AudioAnalyzer,
     private val repository: RoastRepository,
-    private val prefs: UserPreferences
+    private val prefs: UserPreferences,
+    private val crackAlarm: CrackAlarm
 ) : ViewModel() {
 
     // Expose analyzer flows directly — no service binding needed
@@ -181,11 +183,12 @@ class RoastViewModel @Inject constructor(
         val fcEndMs    = autoFcEndMs
         val scStartMs  = autoScMs
         val doRecord   = recordForTraining.value
+        val audioStart = audioAnalyzer.audioStartWallMs
 
         viewModelScope.launch {
             if (sid >= 0) {
                 repository.endSession(sid, System.currentTimeMillis(), startMs)
-                if (doRecord) writeTrainingJson(sid, startMs, fcStartMs, fcEndMs, scStartMs)
+                if (doRecord) writeTrainingJson(sid, startMs, audioStart, fcStartMs, fcEndMs, scStartMs)
             }
         }
 
@@ -196,13 +199,14 @@ class RoastViewModel @Inject constructor(
     private suspend fun writeTrainingJson(
         sessionId: Long,
         startMs: Long,
+        audioStartMs: Long,
         fcStartMs: Long?,
         fcEndMs: Long?,
         scStartMs: Long?
     ) {
         try {
             val confirmations = repository.getConfirmationsForSession(sessionId)
-            val json = buildTrainingJson(sessionId, startMs, fcStartMs, fcEndMs, scStartMs, confirmations)
+            val json = buildTrainingJson(sessionId, startMs, audioStartMs, fcStartMs, fcEndMs, scStartMs, confirmations)
             withContext(Dispatchers.IO) {
                 val dir = appContext.getExternalFilesDir("training")
                     ?: appContext.filesDir.resolve("training")
@@ -214,26 +218,36 @@ class RoastViewModel @Inject constructor(
         }
     }
 
+    /**
+     * v2: every time is ms from the start of the recorded audio (= position in the
+     * WAV). v1 mixed clocks: confirmations used the pause-adjusted on-screen timer
+     * and auto events used the session start, while the WAV starts later than the
+     * session and keeps recording through pauses — so labels drifted off the audio.
+     */
     private fun buildTrainingJson(
         sessionId: Long,
         startMs: Long,
+        audioStartMs: Long,
         fcStartMs: Long?,
         fcEndMs: Long?,
         scStartMs: Long?,
         confirmations: List<CrackConfirmation>
     ): String {
+        val t0 = if (audioStartMs > 0L) audioStartMs else startMs
         val confirmedJson = confirmations.joinToString(",\n    ") { c ->
-            """{"type":"${c.crackType}","elapsedMs":${c.elapsedMs},"peakRmsRatio":${"%.3f".format(c.rmsRatio)},"spectralRatio":${"%.3f".format(c.spectralRatio)}}"""
+            """{"type":"${c.crackType}","elapsedMs":${c.confirmedMs - t0},"peakRmsRatio":${"%.3f".format(c.rmsRatio)},"spectralRatio":${"%.3f".format(c.spectralRatio)}}"""
         }
 
-        val autoFc  = fcStartMs?.let { it - startMs }
-        val autoFcE = fcEndMs?.let   { it - startMs }
-        val autoSc  = scStartMs?.let { it - startMs }
+        val autoFc  = fcStartMs?.let { it - t0 }
+        val autoFcE = fcEndMs?.let   { it - t0 }
+        val autoSc  = scStartMs?.let { it - t0 }
 
         return """{
-  "version": 1,
+  "version": 2,
+  "clock": "audio",
   "sessionId": $sessionId,
   "startTimeMs": $startMs,
+  "audioStartWallMs": $t0,
   "audio": {
     "filename": "training_$startMs.wav",
     "sampleRate": ${AudioAnalyzer.SAMPLE_RATE},
@@ -390,6 +404,9 @@ class RoastViewModel @Inject constructor(
             if (crackType == "FC_START") setOf("FC_START")
             else _confirmedTypes.value + crackType
     }
+
+    /** Silence the (service-owned) second-crack alarm. */
+    fun stopAlarm() = crackAlarm.stop()
 
     fun isSessionActive(): Boolean = isSessionActive
 

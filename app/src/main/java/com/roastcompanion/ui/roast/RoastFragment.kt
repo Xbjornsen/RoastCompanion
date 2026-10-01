@@ -6,14 +6,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
 import android.widget.LinearLayout
-import android.media.AudioAttributes
-import android.media.MediaPlayer
-import android.media.RingtoneManager
-import android.os.Build
 import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -21,7 +14,6 @@ import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.core.content.getSystemService
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -57,7 +49,6 @@ class RoastFragment : Fragment() {
     private val viewModel: RoastViewModel by viewModels()
 
     private val rmsHistory = ArrayDeque<Float>(200)
-    private var alarmPlayer: MediaPlayer? = null
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -557,7 +548,7 @@ class RoastFragment : Fragment() {
             is RoastAlert.FirstCrackDetected -> {
                 animateStripeColor(binding.fcStripe,
                     ContextCompat.getColor(ctx, R.color.lab_amber))
-                vibrate(longArrayOf(0, 200, 100, 200))
+                // vibration now comes from the service (CrackAlarm)
                 val msg = fcDeltaVsReference()
                     ?.let { "First crack — $it" }
                     ?: getString(R.string.alert_fc_detected)
@@ -569,8 +560,8 @@ class RoastFragment : Fragment() {
             is RoastAlert.SecondCrackDetected -> {
                 animateStripeColor(binding.scStripe,
                     ContextCompat.getColor(ctx, R.color.lab_red))
-                vibrate(longArrayOf(0, 500, 200, 500, 200, 500))
-                playAlarm()
+                // sound + vibration + notification come from the service (CrackAlarm),
+                // so they also fire with the screen off; the sheet is the in-app UI.
                 showScAlert()
             }
         }
@@ -592,11 +583,7 @@ class RoastFragment : Fragment() {
         findNavController().navigate(R.id.carryoverFragment)
     }
 
-    private fun stopAlarm() {
-        alarmPlayer?.let { if (it.isPlaying) it.stop() }
-        alarmPlayer?.release()
-        alarmPlayer = null
-    }
+    private fun stopAlarm() = viewModel.stopAlarm()
 
     private fun animateStripeColor(stripe: View, toColor: Int) {
         val from = (stripe.background as? android.graphics.drawable.ColorDrawable)?.color
@@ -608,34 +595,7 @@ class RoastFragment : Fragment() {
         }
     }
 
-    private fun vibrate(pattern: LongArray) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            requireContext().getSystemService<VibratorManager>()
-                ?.defaultVibrator
-                ?.vibrate(VibrationEffect.createWaveform(pattern, -1))
-        } else {
-            @Suppress("DEPRECATION")
-            requireContext().getSystemService<Vibrator>()?.vibrate(pattern, -1)
-        }
-    }
 
-    private fun playAlarm() {
-        alarmPlayer?.release()
-        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        alarmPlayer = MediaPlayer().apply {
-            setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-            setDataSource(requireContext(), alarmUri)
-            isLooping = false
-            prepare()
-            start()
-        }
-    }
 
     private fun requestPermissionsAndStart() {
         if (PermissionHelper.hasRecordAudio(requireContext())) {
@@ -670,8 +630,6 @@ class RoastFragment : Fragment() {
         super.onDestroyView()
         fillAnimators.values.forEach { it.cancel() }
         fillAnimators.clear()
-        alarmPlayer?.release()
-        alarmPlayer = null
         _binding = null
     }
 }

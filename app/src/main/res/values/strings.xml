@@ -42,6 +42,7 @@
     <string name="alert_fc_complete">First crack complete</string>
     <string name="alert_sc_detected">⚠ Second crack — start cooling?</string>
     <string name="action_start_cooling">Start Cooling</string>
+    <string name="action_stop_alarm">Stop alarm</string>
     <string name="sc_alert_body">Pull when ready — cooling carryover runs ~45s after you stop.</string>
     <string name="sc_alert_dismiss">Silence &amp; dismiss</string>
 
