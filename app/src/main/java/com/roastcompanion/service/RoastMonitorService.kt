@@ -12,7 +12,9 @@ import android.util.Log
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.roastcompanion.audio.AudioAnalyzer
+import com.roastcompanion.audio.CrackEvent
 import com.roastcompanion.audio.WavRecorder
+import com.roastcompanion.util.CrackAlarm
 import com.roastcompanion.util.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +29,7 @@ class RoastMonitorService : LifecycleService() {
 
     @Inject lateinit var audioAnalyzer: AudioAnalyzer
     @Inject lateinit var notificationHelper: NotificationHelper
+    @Inject lateinit var crackAlarm: CrackAlarm
 
     private var audioRecord: AudioRecord? = null
     private var recordingJob: Job? = null
@@ -57,8 +60,14 @@ class RoastMonitorService : LifecycleService() {
                 doRecord    = intent.getBooleanExtra(EXTRA_RECORD_FOR_TRAINING, false)
             )
             ACTION_STOP  -> stopRecording()
+            ACTION_STOP_ALARM -> { crackAlarm.stop(); if (audioRecord == null) stopSelf() }
+            // Restarted by the system after being killed (null intent): the roast
+            // state is gone, so don't sit there as an empty foreground service.
+            null -> if (audioRecord == null) stopSelf()
         }
-        return START_STICKY
+        // Not sticky: a restart can't resume the roast (session/VM state lives
+        // in the killed process), and a silent do-nothing service is worse.
+        return START_NOT_STICKY
     }
 
     private fun startRecording(startTimeMs: Long, doRecord: Boolean) {
@@ -111,6 +120,18 @@ class RoastMonitorService : LifecycleService() {
             }
         }
 
+        // Crack alerts belong to the service so they fire with the screen off /
+        // app in the background (they used to live in RoastFragment).
+        lifecycleScope.launch {
+            audioAnalyzer.eventFlow.collect { event ->
+                when (event) {
+                    is CrackEvent.FirstCrackStarted  -> crackAlarm.firstCrack()
+                    is CrackEvent.SecondCrackStarted -> crackAlarm.secondCrack()
+                    else -> Unit
+                }
+            }
+        }
+
         lifecycleScope.launch {
             audioAnalyzer.phaseFlow.collect { phase ->
                 notificationHelper.updateMonitorNotification(phase)
@@ -119,6 +140,7 @@ class RoastMonitorService : LifecycleService() {
     }
 
     private fun stopRecording() {
+        crackAlarm.stop()
         recordingJob?.cancel()
         recordingJob = null
         audioRecord?.stop()
@@ -144,6 +166,7 @@ class RoastMonitorService : LifecycleService() {
     companion object {
         const val ACTION_START = "com.roastcompanion.START"
         const val ACTION_STOP  = "com.roastcompanion.STOP"
+        const val ACTION_STOP_ALARM = "com.roastcompanion.STOP_ALARM"
 
         const val EXTRA_START_TIME_MS        = "startTimeMs"
         const val EXTRA_RECORD_FOR_TRAINING  = "recordForTraining"

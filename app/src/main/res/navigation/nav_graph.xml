@@ -43,6 +43,12 @@
         android:label="Roasting 101"
         tools:layout="@layout/fragment_guide" />
 
+    <fragment
+        android:id="@+id/tempCamFragment"
+        android:name="com.roastcompanion.ui.tempcam.TempCamFragment"
+        android:label="Temp Cam"
+        tools:layout="@layout/fragment_temp_cam" />
+
     <dialog
         android:id="@+id/carryoverFragment"
         android:name="com.roastcompanion.ui.roast.CarryoverFragment"
