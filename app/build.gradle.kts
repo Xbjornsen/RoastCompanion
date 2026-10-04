@@ -13,8 +13,10 @@ plugins {
 // Single version source. The release workflow overrides these from the git tag:
 //   gradle assembleRelease -PappVersionName=1.2.0 -PappVersionCode=10200
 // versionCode scheme: major*10000 + minor*100 + patch
-val appVersionName = (project.findProperty("appVersionName") as String?) ?: "1.7.3"
-val appVersionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 10703
+// The fallback (Android Studio builds) = the latest release tag; bump it after tagging.
+// Debug builds show it as "x.y.z-dev" and install as a separate app (see buildTypes.debug).
+val appVersionName = (project.findProperty("appVersionName") as String?) ?: "1.8.0"
+val appVersionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 10800
 
 android {
     namespace = "com.roastcompanion"
@@ -48,6 +50,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Studio builds are signed with the local debug key, so they can never update (or be
+            // updated by) a release install. A separate package id lets both sit side by side;
+            // the launcher label comes from src/debug/res/values/strings.xml.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-dev"
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -117,11 +126,11 @@ dependencies {
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     // CameraX — Temp Cam dev capture (records the CBR LED display for 7-seg OCR)
-    implementation("androidx.camera:camera-core:1.3.4")
-    implementation("androidx.camera:camera-camera2:1.3.4")
-    implementation("androidx.camera:camera-lifecycle:1.3.4")
-    implementation("androidx.camera:camera-video:1.3.4")
-    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("androidx.camera:camera-core:1.4.2")
+    implementation("androidx.camera:camera-camera2:1.4.2")
+    implementation("androidx.camera:camera-lifecycle:1.4.2")
+    implementation("androidx.camera:camera-video:1.4.2")
+    implementation("androidx.camera:camera-view:1.4.2")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
