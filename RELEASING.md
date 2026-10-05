@@ -3,7 +3,8 @@
 ## How a release works
 
 1. Bump the fallback version in `app/build.gradle.kts` (`appVersionName` /
-   `appVersionCode`) so local builds match — optional, CI overrides from the tag.
+   `appVersionCode`) so local builds match — CI overrides from the tag, but the in-app updater on
+   a debug build compares against this.
 2. Commit, then tag and push:
 
    ```powershell
@@ -30,9 +31,11 @@ Version code is derived from the tag: `major*10000 + minor*100 + patch`
 
 ## One-time gotchas on the phone
 
-- The debug build installed over adb is signed with the **debug** key. The
-  first release install won't go over it — uninstall RoastCompanion once
-  (export history to CSV first!), then install the release APK. After that,
-  in-app updates work seamlessly.
+- Android Studio (debug) builds install as a **separate app**, "RoastCompanion
+  (debug)" (`com.roastcompanion.debug`, version shown as `x.y.z-dev`), so they never
+  clash with the release install. Builds from before v1.8.0 used the release package
+  id with the debug key: if a phone still has one of those (it shows 1.7.3), uninstall
+  it once — export history to CSV first, untick "Keep app data" — then install the
+  release APK.
 - Android will ask once to allow RoastCompanion to install apps
   ("Install unknown apps") — approve it.
