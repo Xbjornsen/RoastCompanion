@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crack Marker</title>
+<style>
+  :root { --bg:#16120f; --panel:#211b16; --line:#3a3029; --text:#efe6dc; --muted:#a8998a; --amber:#f0a040; --mark:#ff6a3d; --play:#7fd3ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, Segoe UI, sans-serif; }
+  header { padding:14px 18px 6px; }
+  h1 { font-size:18px; margin:0 0 4px; color:var(--amber); }
+  .sub { color:var(--muted); font-size:12.5px; }
+  .bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 18px; }
+  button, select, label.file { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 11px; font:inherit; cursor:pointer; }
+  button:hover, label.file:hover { border-color:var(--amber); }
+  button.primary { background:var(--amber); color:#1b120a; border-color:var(--amber); font-weight:600; }
+  .readout { font-family:ui-monospace, Consolas, monospace; color:var(--muted); margin-left:auto; }
+  .wrap { padding:0 18px; }
+  canvas { display:block; width:100%; background:#0e0b09; border:1px solid var(--line); border-radius:6px; margin-bottom:6px; }
+  #ov { height:56px; cursor:pointer; }
+  #wv { height:170px; cursor:crosshair; }
+  #sp { height:220px; cursor:crosshair; }
+  .grid { display:grid; grid-template-columns: 1fr 320px; gap:14px; padding:6px 18px 18px; }
+  @media (max-width: 860px) { .grid { grid-template-columns:1fr; } }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .card h2 { font-size:13px; margin:0 0 8px; color:var(--amber); text-transform:uppercase; letter-spacing:.08em; }
+  ol { margin:0; padding-left:32px; max-height:300px; overflow:auto; font-family:ui-monospace, Consolas, monospace; font-size:13px; }
+  li { padding:2px 0; }
+  li a { color:var(--text); text-decoration:none; cursor:pointer; }
+  li a:hover { color:var(--amber); }
+  li .x { color:var(--muted); cursor:pointer; margin-left:8px; }
+  li .x:hover { color:var(--mark); }
+  textarea { width:100%; height:90px; background:#0e0b09; color:var(--text); border:1px solid var(--line); border-radius:6px; font:12px ui-monospace, Consolas, monospace; }
+  kbd { background:#0e0b09; border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:12px; }
+  .help li { font-family:inherit; font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Crack Marker</h1>
+  <div class="sub" id="clipinfo"></div>
+</header>
+
+<div class="bar">
+  <button class="primary" id="playView">▶ Play view</button>
+  <button id="stop">■ Stop</button>
+  <select id="rate">
+    <option value="1">1× speed</option>
+    <option value="0.5">½ speed</option>
+    <option value="0.25" selected>¼ speed</option>
+    <option value="0.125">⅛ speed</option>
+  </select>
+  <label style="display:flex;gap:5px;align-items:center;color:var(--muted)"><input type="checkbox" id="pitch" checked> keep pitch</label>
+  <label style="display:flex;gap:5px;align-items:center;color:var(--muted)"><input type="checkbox" id="loop" checked> loop</label>
+  <button id="zin">Zoom in</button>
+  <button id="zout">Zoom out</button>
+  <button id="zall">Whole clip</button>
+  <label class="file">Open another WAV…<input type="file" id="file" accept=".wav,audio/wav" hidden></label>
+  <span class="readout" id="readout"></span>
+</div>
+
+<div class="wrap">
+  <canvas id="ov"></canvas>
+  <canvas id="wv"></canvas>
+  <canvas id="sp"></canvas>
+</div>
+
+<div class="grid">
+  <div class="card help">
+    <h2>How to use</h2>
+    <ul>
+      <li><b>Scroll</b> over the waveform to zoom around the mouse; <b>drag</b> to pan. Click the top strip to jump anywhere.</li>
+      <li><b>Play view</b> plays just what's on screen (slowed, looping) so you can listen to a few seconds at a time.</li>
+      <li><b>Double-click</b> on a crack to mark it. Or press <kbd>M</kbd> while it plays to mark at the playhead (then fine-tune by double-clicking the exact spike).</li>
+      <li>Cracks look like thin bright vertical lines in the lower picture (steady noise is dimmed out) and sharp spikes in the waveform.</li>
+      <li>If something you marked is NOT a crack (bean rattle, a knock), mark it with <kbd>N</kbd> / shift-double-click instead — "not a crack" examples help too.</li>
+      <li><kbd>Space</kbd> play/stop · <kbd>+</kbd>/<kbd>−</kbd> zoom · <kbd>Z</kbd> undo last mark.</li>
+      <li>When done, press <b>Copy marks</b> and paste them into the chat.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>Marks (<span id="count">0</span>)</h2>
+    <ol id="list"></ol>
+    <div style="display:flex;gap:8px;margin:10px 0 6px">
+      <button class="primary" id="copy">Copy marks</button>
+      <button id="clear">Clear all</button>
+    </div>
+    <textarea id="out" readonly></textarea>
+  </div>
+</div>
+
+<script>
+// ---- embedded clip (replaced by the generator) ----
+const CLIP = { name: "__NAME__", offsetS: __OFFSET__, note: "__NOTE__", b64: "__B64__" };
+
+const $ = id => document.getElementById(id);
+let sr = 44100, x = new Float32Array(0), dur = 0, clipName = CLIP.name, offsetS = CLIP.offsetS;
+let v0 = 0, v1 = 1;                 // visible window (s)
+let marks = [];                      // {t, crack:bool}
+let audio = new Audio(), audioUrl = null, playing = false, raf = 0;
+const ov = $('ov'), wv = $('wv'), sp = $('sp');
+
+function fmtRoast(t) { const a = t + offsetS; const m = Math.floor(a / 60); return m + ':' + (a - 60 * m).toFixed(3).padStart(6, '0'); }
+
+function parseWav(buf) {
+  const dv = new DataView(buf); let p = 12, fmt = null, data = null;
+  while (p + 8 <= dv.byteLength) {
+    const id = String.fromCharCode(dv.getUint8(p), dv.getUint8(p+1), dv.getUint8(p+2), dv.getUint8(p+3));
+    const len = dv.getUint32(p + 4, true);
+    if (id === 'fmt ') fmt = { ch: dv.getUint16(p + 10, true), sr: dv.getUint32(p + 12, true), bits: dv.getUint16(p + 22, true) };
+    if (id === 'data') data = { off: p + 8, len: Math.min(len, dv.byteLength - p - 8) };
+    p += 8 + len + (len & 1);
+  }
+  if (!fmt || !data || fmt.bits !== 16) throw new Error('Need a 16-bit PCM WAV');
+  const n = Math.floor(data.len / 2 / fmt.ch), out = new Float32Array(n);
+  for (let i = 0; i < n; i++) out[i] = dv.getInt16(data.off + i * 2 * fmt.ch, true) / 32768;
+  return { sr: fmt.sr, x: out };
+}
+
+function load(buf, name, off, note) {
+  const w = parseWav(buf); sr = w.sr; x = w.x; dur = x.length / sr; clipName = name; offsetS = off;
+  if (audioUrl) URL.revokeObjectURL(audioUrl);
+  audioUrl = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  audio.src = audioUrl;
+  marks = []; v0 = 0; v1 = Math.min(dur, 5);
+  $('clipinfo').textContent = `${name} · ${dur.toFixed(1)} s` + (off ? ` · starts at roast time ${fmtRoast(0)}` : '') + (note ? ` · ${note}` : '');
+  renderList(); draw();
+}
+
+// ---- drawing ----
+function fit(c) { const r = c.getBoundingClientRect(), d = devicePixelRatio || 1; c.width = Math.round(r.width * d); c.height = Math.round(r.height * d); return c.getContext('2d'); }
+const t2x = (t, W) => (t - v0) / (v1 - v0) * W;
+const x2t = (px, W) => v0 + px / W * (v1 - v0);
+
+function drawOverview() {
+  const g = fit(ov), W = ov.width, H = ov.height; g.clearRect(0, 0, W, H);
+  const step = Math.max(1, Math.floor(x.length / W)); g.fillStyle = '#8a6a48';
+  for (let px = 0; px < W; px++) { let m = 0; const a = px * step; for (let i = a; i < a + step && i < x.length; i++) m = Math.max(m, Math.abs(x[i])); const h = m * H; g.fillRect(px, (H - h) / 2, 1, Math.max(1, h)); }
+  g.fillStyle = 'rgba(240,160,64,.18)'; g.strokeStyle = '#f0a040';
+  const a = v0 / dur * W, b = v1 / dur * W; g.fillRect(a, 0, b - a, H); g.strokeRect(a + .5, .5, b - a, H - 1);
+  for (const m of marks) { g.fillStyle = m.crack ? '#ff6a3d' : '#9a9a9a'; g.fillRect(m.t / dur * W, 0, 2, H); }
+  drawHead(g, W, H, true);
+}
+
+function drawWave() {
+  const g = fit(wv), W = wv.width, H = wv.height; g.clearRect(0, 0, W, H);
+  const i0 = Math.floor(v0 * sr), i1 = Math.ceil(v1 * sr), spp = (i1 - i0) / W;
+  let peak = 1e-4; for (let i = i0; i < i1; i++) peak = Math.max(peak, Math.abs(x[i] || 0));
+  const k = (H / 2 - 4) / peak;
+  g.strokeStyle = '#3a3029'; g.beginPath(); g.moveTo(0, H / 2); g.lineTo(W, H / 2); g.stroke();
+  g.fillStyle = '#d9b48a'; g.strokeStyle = '#d9b48a';
+  if (spp > 1) {
+    for (let px = 0; px < W; px++) { let lo = 0, hi = 0; const a = i0 + Math.floor(px * spp), b = i0 + Math.floor((px + 1) * spp); for (let i = a; i < b; i++) { const v = x[i] || 0; if (v < lo) lo = v; if (v > hi) hi = v; } g.fillRect(px, H / 2 - hi * k, 1, Math.max(1, (hi - lo) * k)); }
+  } else {
+    g.beginPath(); for (let i = i0; i <= i1; i++) { const px = (i / sr - v0) / (v1 - v0) * W, py = H / 2 - (x[i] || 0) * k; i === i0 ? g.moveTo(px, py) : g.lineTo(px, py); } g.stroke();
+  }
+  drawTicks(g, W, H); drawMarks(g, W, H); drawHead(g, W, H, false);
+}
+
+// Spectrogram of the visible window (2nd-difference energy view would hide pitch; a plain STFT is clearer to the eye)
+const NFFT = 512;
+const HANN = Float32Array.from({ length: NFFT }, (_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (NFFT - 1)));
+function fft(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) { let b = n >> 1; for (; j & b; b >>= 1) j ^= b; j ^= b; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+  for (let len = 2; len <= n; len <<= 1) { const a = -2 * Math.PI / len, wr = Math.cos(a), wi = Math.sin(a);
+    for (let i = 0; i < n; i += len) { let cr = 1, ci = 0; for (let k = 0; k < len / 2; k++) { const ur = re[i + k], ui = im[i + k], vr = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci, vi = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr; re[i + k] = ur + vr; im[i + k] = ui + vi; re[i + k + len / 2] = ur - vr; im[i + k + len / 2] = ui - vi; const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr; } } }
+}
+function color(v) { // 0..1 -> magma-ish
+  const s = [[0,0,4],[40,11,84],[101,21,110],[159,42,99],[212,72,66],[245,125,21],[250,193,39],[252,255,164]];
+  const f = Math.max(0, Math.min(.9999, v)) * (s.length - 1), i = Math.floor(f), t = f - i;
+  return s[i].map((c, k) => Math.round(c + (s[i + 1][k] - c) * t));
+}
+function drawSpec() {
+  const g = fit(sp), W = sp.width, H = sp.height;
+  const img = g.createImageData(W, H), re = new Float32Array(NFFT), im = new Float32Array(NFFT);
+  const bins = NFFT / 2;
+  const M = new Float32Array(W * bins);
+  for (let px = 0; px < W; px++) {
+    const c = Math.floor(x2t(px + .5, W) * sr) - NFFT / 2;
+    for (let i = 0; i < NFFT; i++) { re[i] = (x[c + i] || 0) * HANN[i]; im[i] = 0; }
+    fft(re, im);
+    for (let b = 0; b < bins; b++) M[px * bins + b] = 10 * Math.log10(re[b] * re[b] + im[b] * im[b] + 1e-12);
+  }
+  // per-frequency-row normalisation: subtract each row's median so steady hiss goes dark
+  // and short broadband clicks (cracks) stand out as bright vertical lines
+  const tmp = new Float32Array(W);
+  for (let b = 0; b < bins; b++) {
+    for (let px = 0; px < W; px++) tmp[px] = M[px * bins + b];
+    const med = tmp.slice().sort()[W >> 1];
+    for (let px = 0; px < W; px++) M[px * bins + b] -= med;
+  }
+  for (let px = 0; px < W; px++) {
+    for (let py = 0; py < H; py++) {
+      const b = Math.min(bins - 1, Math.floor((1 - py / H) * bins));
+      const [r, gg, bb] = color((M[px * bins + b] + 3) / 21);
+      const o = (py * W + px) * 4; img.data[o] = r; img.data[o + 1] = gg; img.data[o + 2] = bb; img.data[o + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  g.fillStyle = 'rgba(239,230,220,.7)'; g.font = `${11 * (devicePixelRatio || 1)}px system-ui`;
+  for (const k of [2, 5, 10, 15, 20]) { const y = H * (1 - k * 1000 / (sr / 2)); if (y > 0) g.fillText(k + ' kHz', 4, y - 2); }
+  drawMarks(g, W, H); drawHead(g, W, H, false);
+}
+
+function drawTicks(g, W, H) {
+  const span = v1 - v0, steps = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10];
+  const st = steps.find(s => span / s <= 12) || 10;
+  g.fillStyle = 'rgba(168,153,138,.9)'; g.font = `${11 * (devicePixelRatio || 1)}px ui-monospace, Consolas, monospace`;
+  for (let t = Math.ceil(v0 / st) * st; t < v1; t += st) { const px = t2x(t, W); g.fillRect(px, H - 8, 1, 8); g.fillText(fmtRoast(t), px + 3, H - 10); }
+}
+function drawMarks(g, W, H) {
+  for (const m of marks) if (m.t >= v0 && m.t <= v1) { g.fillStyle = m.crack ? 'rgba(255,106,61,.95)' : 'rgba(170,170,170,.9)'; g.fillRect(Math.round(t2x(m.t, W)) - 1, 0, 2, H); }
+}
+function drawHead(g, W, H, overview) {
+  if (!audio.src) return;
+  const t = audio.currentTime || 0, px = overview ? t / dur * W : t2x(t, W);
+  if (px < 0 || px > W) return; g.fillStyle = '#7fd3ff'; g.fillRect(px, 0, 2, H);
+}
+function draw() { if (!dur) return; drawOverview(); drawWave(); drawSpec(); readout(); }
+function readout() { $('readout').textContent = `view ${fmtRoast(v0)} – ${fmtRoast(v1)}  (${(v1 - v0).toFixed(2)} s)  ▸ ${fmtRoast(audio.currentTime || 0)}`; }
+
+// ---- view control ----
+function setView(a, b) { const span = Math.max(0.02, Math.min(dur, b - a)); a = Math.max(0, Math.min(dur - span, a)); v0 = a; v1 = a + span; draw(); }
+function zoom(f, at) { at = at ?? (v0 + v1) / 2; setView(at - (at - v0) * f, at + (v1 - at) * f); }
+$('zin').onclick = () => zoom(0.5); $('zout').onclick = () => zoom(2); $('zall').onclick = () => setView(0, dur);
+for (const c of [wv, sp]) {
+  c.addEventListener('wheel', e => { e.preventDefault(); const r = c.getBoundingClientRect(); zoom(e.deltaY > 0 ? 1.25 : 0.8, x2t(e.clientX - r.left, r.width)); }, { passive: false });
+  let drag = null;
+  c.addEventListener('mousedown', e => { drag = { x: e.clientX, a: v0, b: v1, moved: false }; });
+  window.addEventListener('mousemove', e => { if (!drag) return; const r = c.getBoundingClientRect(), dt = (e.clientX - drag.x) / r.width * (drag.b - drag.a); if (Math.abs(e.clientX - drag.x) > 3) drag.moved = true; if (drag.moved) setView(drag.a - dt, drag.b - dt); });
+  window.addEventListener('mouseup', e => { if (drag && !drag.moved && e.target === c) { const r = c.getBoundingClientRect(); seek(x2t(e.clientX - r.left, r.width)); } drag = null; });
+  c.addEventListener('dblclick', e => { const r = c.getBoundingClientRect(); addMark(snap(x2t(e.clientX - r.left, r.width)), !e.shiftKey); });
+}
+ov.addEventListener('click', e => { const r = ov.getBoundingClientRect(), t = (e.clientX - r.left) / r.width * dur, s = v1 - v0; setView(t - s / 2, t + s / 2); });
+
+// snap a mark to the sharpest click within ±15 ms (2nd difference = click energy)
+function snap(t) {
+  const c = Math.round(t * sr), w = Math.round(0.015 * sr); let best = c, bv = -1;
+  for (let i = Math.max(2, c - w); i < Math.min(x.length, c + w); i++) { const d = x[i] - 2 * x[i - 1] + x[i - 2], v = d * d; if (v > bv) { bv = v; best = i; } }
+  return best / sr;
+}
+
+// ---- playback ----
+function seek(t) { audio.currentTime = Math.max(0, Math.min(dur, t)); draw(); }
+function applyRate() { audio.playbackRate = +$('rate').value; audio.preservesPitch = audio.mozPreservesPitch = audio.webkitPreservesPitch = $('pitch').checked; }
+$('rate').onchange = applyRate; $('pitch').onchange = applyRate;
+function tick() {
+  if (!playing) return;
+  if (audio.currentTime >= v1 || audio.ended) { if ($('loop').checked) { audio.currentTime = v0; audio.play(); } else { stop(); return; } }
+  draw(); raf = requestAnimationFrame(tick);
+}
+function playView() { applyRate(); if (audio.currentTime < v0 || audio.currentTime >= v1) audio.currentTime = v0; audio.play(); playing = true; cancelAnimationFrame(raf); tick(); }
+function stop() { audio.pause(); playing = false; cancelAnimationFrame(raf); draw(); }
+$('playView').onclick = playView; $('stop').onclick = stop;
+
+// ---- marks ----
+function addMark(t, crack = true) { marks.push({ t, crack }); marks.sort((a, b) => a.t - b.t); renderList(); draw(); }
+function renderList() {
+  const ol = $('list'); ol.innerHTML = '';
+  marks.forEach((m, i) => {
+    const li = document.createElement('li');
+    const a = document.createElement('a'); a.textContent = `${fmtRoast(m.t)}  ${m.crack ? 'crack' : 'not a crack'}`; a.style.color = m.crack ? '' : 'var(--muted)';
+    a.onclick = () => { setView(m.t - 0.25, m.t + 0.25); seek(m.t - 0.1); };
+    const xx = document.createElement('span'); xx.className = 'x'; xx.textContent = '✕'; xx.title = 'remove';
+    xx.onclick = () => { marks.splice(i, 1); renderList(); draw(); };
+    li.append(a, xx); ol.append(li);
+  });
+  $('count').textContent = marks.length;
+  $('out').value = exportText();
+}
+function exportText() {
+  if (!marks.length) return '';
+  return `CRACK MARKS · ${clipName} · clip starts at roast ${offsetS}s\n` +
+    marks.map(m => `${(m.t + offsetS).toFixed(3)}\t${m.crack ? 'crack' : 'not'}`).join('\n');
+}
+$('copy').onclick = async () => { const t = exportText(); $('out').value = t; $('out').select(); try { await navigator.clipboard.writeText(t); $('copy').textContent = 'Copied ✓'; } catch { document.execCommand('copy'); $('copy').textContent = 'Copied ✓'; } setTimeout(() => $('copy').textContent = 'Copy marks', 1500); };
+$('clear').onclick = () => { if (confirmClear()) { marks = []; renderList(); draw(); } };
+function confirmClear() { const b = $('clear'); if (b.dataset.armed) { delete b.dataset.armed; b.textContent = 'Clear all'; return true; } b.dataset.armed = 1; b.textContent = 'Click again to clear'; setTimeout(() => { delete b.dataset.armed; b.textContent = 'Clear all'; }, 2500); return false; }
+
+// ---- keyboard ----
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (e.code === 'Space') { e.preventDefault(); playing ? stop() : playView(); }
+  else if (e.key === 'm' || e.key === 'M') addMark(audio.currentTime, true);
+  else if (e.key === 'n' || e.key === 'N') addMark(audio.currentTime, false);
+  else if (e.key === 'z' || e.key === 'Z') { marks.pop(); renderList(); draw(); }
+  else if (e.key === '+' || e.key === '=') zoom(0.5);
+  else if (e.key === '-') zoom(2);
+});
+window.addEventListener('resize', draw);
+
+// ---- file open ----
+$('file').onchange = async e => { const f = e.target.files[0]; if (!f) return; const m = f.name.match(/(\d+)m(\d+)/); load(await f.arrayBuffer(), f.name, m ? +m[1] * 60 + +m[2] : 0, ''); };
+
+// ---- boot ----
+(function boot() {
+  if (CLIP.b64.startsWith('__')) { $('clipinfo').textContent = 'Open a WAV to start.'; return; }
+  const bin = atob(CLIP.b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  load(u.buffer, CLIP.name, CLIP.offsetS, CLIP.note);
+  setView(9, 14);   // FC tap is 9 s into this clip
+})();
+</script>
+</body>
+</html>

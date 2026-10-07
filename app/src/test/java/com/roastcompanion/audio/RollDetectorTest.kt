@@ -67,6 +67,23 @@ class RollDetectorTest {
     }
 
     @Test
+    fun softRecording20261007_adaptiveThresholdMatchesReference() {
+        // Owner taps: FC 9:29.4, FC end 11:12.9, SC 12:25.3. Cracks here peak at imp ~2-3,
+        // under the fixed 3.5 bar; the per-roast threshold (2.94) recovers FC end and SC.
+        val imp = trace("roll_trace_20261007.txt")
+        val d = RollDetector(480)
+        val ev = HashMap<RollDetector.Event, Long>()
+        var forced = false
+        for ((i, v) in imp.withIndex()) {
+            if (!forced && i * 50L >= 572_420L) { d.forceFirstCrack(); forced = true }
+            d.push(v)?.let { ev[it] = (i / RollDetector.FPS) * 1000L }
+        }
+        assertEquals(2.9415, d.popThreshold, 0.001)
+        assertEquals(674_000L, ev[RollDetector.Event.FIRST_CRACK_END])
+        assertEquals(745_000L, ev[RollDetector.Event.SECOND_CRACK])
+    }
+
+    @Test
     fun manualFcOnSilentRollNeverAutoEnds() {
         // 2026-10-07 roast: soft recording, owner tapped FC, the pop rate never rose above
         // baseline and "25 s of quiet" ended FC 25 s after the tap. FC end must need a roll.
