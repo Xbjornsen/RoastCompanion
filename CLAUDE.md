@@ -75,10 +75,21 @@ Pipeline: `RoastMonitorService` reads 50 ms frames (2205 samples) → `AudioAnal
   SC: from 90 s after FC (auto or manual tap), 10 s rate ≥ max(1.3×baseline(60 s), +3) for 3 s.
   FC end (informational): rate back near the pre-FC baseline for the quiet-period setting.
 - **Manual FC tap** → `AudioAnalyzer.forceFirstCrack()` re-anchors FC (and SC timing) to now.
-- Measured with `training_data/scripts/harness.py` on 18 by-ear-labelled roasts:
-  FC 11/18 within −30..+60 s, 0 early, 3 late, 4 missed; SC after a manual FC tap 9/16
-  within ±30 s, 0 early/late, 7 missed; empty-roaster run: no events. Leave-one-roast-out
-  (params chosen without the scored roast): FC 7/18, SC 7/16 — expect the lower numbers.
+- Measured with `training_data/scripts/harness.py` on 19 labelled roasts:
+  FC 15/19 within −30..+60 s, 0 early, 1 late, 3 missed; SC after auto FC 8/17, after a
+  manual FC tap 11/17 within ±30 s, 0 early/late anywhere; empty-roaster run: no events.
+  (Fixed pop_th 3.5 gave FC 11/19, SC-after-tap 9/17.) Tuned on the same 19 roasts — but
+  neighbouring settings (percentile 98.5–99.25, windows 2–6 / 3–7 / 4–7.5 min) all land
+  at FC 15–16/19, so it is not a knife-edge pick.
+- Adaptive pop threshold (adapt_* in rolldet.py, ADAPT_* in RollDetector.kt): impulsiveness
+  from 2–6 min sets this roast's bar = clamp(99.25th pct, 2.0, 3.5). Why: on "soft"
+  recordings (sessions 2, 3, 10, 11, and 2026-10-07 on the OnePlus CPH2747) the background
+  hiss is ~13 dB higher, so a real crack's 1 ms peak only reaches imp ~2–3 (owner-marked
+  cracks: training_data/marks/2026-10-07_fc.tsv, median 2.5). At imp>2.2 that roast has
+  ~5 pops/min before FC vs ~46/min during FC — the information is there.
+- Crack Marker: `python training_data/scripts/make_marker.py <wav> 9:20 9:55` builds a
+  self-contained page (waveform + median-normalised spectrogram, slowed looping playback,
+  double-click to mark). Owner marks → `training_data/marks/*.tsv`.
 - **Constants live in TWO places that must match:** `audio/RollDetector.kt` and
   `training_data/scripts/rolldet.py`. `RollDetectorTest` replays real traces to enforce it.
   Change → edit both → `python harness.py` → update the test's expected times.

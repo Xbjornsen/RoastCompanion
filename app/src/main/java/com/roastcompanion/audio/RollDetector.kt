@@ -17,7 +17,8 @@ package com.roastcompanion.audio
  *   SC: from 90 s after FC, pops in the last 10 s >= max(1.3 x baseline, baseline + 3)
  *       for 3 s, baseline = median over the last 60 s (since FC) ending 10 s ago.
  * Crack Sensitivity (1..5) scales the 1.7/20 and 1.3/3 margins; 3 = as above.
- * FC end is informational: the rate falls back near the pre-FC baseline for 25 s.
+ * FC end is informational: once the roll has been heard above baseline, the rate falls
+ * back near the pre-FC baseline for the quiet period (25 s).
  *
  * Pure Kotlin, time = frames fed (20/s), so it is deterministic and testable.
  */
@@ -49,6 +50,13 @@ class RollDetector(
         const val SC_ABS_MIN = 3.0
         const val SC_HOLD_S = 3
         const val FC_END_QUIET_S = 25
+        // Adaptive pop threshold (rolldet.py adapt_*): impulsiveness from 2-6 min, before any
+        // FC is possible, sets this roast's bar = clamp(99.25th percentile, 2.0, POP_TH).
+        // Quiet phones/placements (2026-10-07: cracks at imp ~2-3) never cleared a fixed 3.5.
+        const val ADAPT_Q = 99.25
+        const val ADAPT_A_S = 120
+        const val ADAPT_B_S = 360
+        const val ADAPT_LO = 2.0
         const val DEFAULT_SENSITIVITY = 3
         /** k scales how far the rate must rise: ratio' = 1 + (ratio - 1) * k, absMin' = absMin * k. */
         private val SENS_K = doubleArrayOf(1.6, 1.3, 1.0, 0.8, 0.6)
@@ -64,6 +72,12 @@ class RollDetector(
     private enum class Phase { MONITORING, FIRST_CRACK, FIRST_CRACK_DONE, SECOND_CRACK }
 
     private var n = 0L                           // frames fed
+    private val cal = FloatArray((ADAPT_B_S - ADAPT_A_S) * FPS)
+    private var calN = 0
+
+    /** This roast's pop threshold (POP_TH until calibrated at ADAPT_B_S). */
+    var popThreshold: Double = POP_TH.toDouble()
+        private set
     private val pops = ArrayDeque<Long>()        // frame indices of recent pops
     private val rFc = ArrayList<Double>(1024)    // per-second pop counts, 20 s window
     private val rSc = ArrayList<Double>(1024)    // per-second pop counts, 10 s window
@@ -72,6 +86,7 @@ class RollDetector(
     private var fcSecond = -1
     private var baseFc = 0.0
     private var quiet = 0
+    private var armed = false   // FC roll heard above baseline at least once (FC end needs it)
 
     /** Total pops seen since the roast started (for the live counter). */
     var totalPops = 0L
@@ -81,7 +96,10 @@ class RollDetector(
 
     /** Feed one 50 ms frame's impulsiveness. Returns an event if one fires on this frame. */
     fun push(impulsiveness: Float): Event? {
-        if (impulsiveness > POP_TH) { pops.addLast(n); totalPops++ }
+        if (n >= ADAPT_A_S * FPS && n < ADAPT_B_S * FPS) cal[calN++] = impulsiveness
+        else if (n == (ADAPT_B_S * FPS).toLong() && calN > 0)
+            popThreshold = minOf(POP_TH.toDouble(), maxOf(ADAPT_LO, percentile(cal, calN, ADAPT_Q)))
+        if (impulsiveness.toDouble() > popThreshold) { pops.addLast(n); totalPops++ }
         val keep = n - MAX_WIN_FRAMES
         while (pops.isNotEmpty() && pops.first() <= keep) pops.removeFirst()
         var ev: Event? = null
@@ -105,6 +123,14 @@ class RollDetector(
         return c
     }
 
+    /** numpy.percentile (linear interpolation) over a[0 until len]. */
+    private fun percentile(a: FloatArray, len: Int, q: Double): Double {
+        val s = a.copyOf(len).map { it.toDouble() }.sorted()
+        val pos = q / 100.0 * (len - 1)
+        val lo = pos.toInt(); val hi = minOf(lo + 1, len - 1)
+        return s[lo] + (s[hi] - s[lo]) * (pos - lo)
+    }
+
     private fun median(r: List<Double>, lo: Int, hi: Int): Double {
         val a = r.subList(lo, hi).sorted()
         val m = a.size / 2
@@ -112,7 +138,7 @@ class RollDetector(
     }
 
     private fun enterFc(s: Int) {
-        phase = Phase.FIRST_CRACK; fcSecond = s; streak = 0; quiet = 0
+        phase = Phase.FIRST_CRACK; fcSecond = s; streak = 0; quiet = 0; armed = false
         val lo = maxOf(0, s - FC_BASE_SPAN_S); val hi = s - FC_BASE_GAP_S
         baseFc = if (hi > lo && hi <= rFc.size) median(rFc, lo, hi) else rFc.lastOrNull() ?: 0.0
     }
@@ -131,7 +157,10 @@ class RollDetector(
         if (phase == Phase.SECOND_CRACK) return null
         var ev: Event? = null
         if (phase == Phase.FIRST_CRACK) {
-            if (rFc[s] < maxOf(1.2 * baseFc, baseFc + 5)) quiet++ else quiet = 0
+            // Only count quiet once the roll was actually heard: after a manual tap on a soft
+            // recording the rate may never rise, and FC end used to fire 25 s after the tap.
+            if (rFc[s] >= maxOf(1.2 * baseFc, baseFc + 5)) { armed = true; quiet = 0 }
+            else if (armed) quiet++
             if (quiet >= fcEndQuietS) { phase = Phase.FIRST_CRACK_DONE; ev = Event.FIRST_CRACK_END }
         }
         if (s < fcSecond + SC_AFTER_S) return ev
