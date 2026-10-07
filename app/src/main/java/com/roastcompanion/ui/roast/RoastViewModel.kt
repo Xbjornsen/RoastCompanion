@@ -129,6 +129,8 @@ class RoastViewModel @Inject constructor(
                 }
                 is CrackEvent.FirstCrackEnded -> {
                     autoFcEndMs = now
+                    // The owner's own FC-end tap is ground truth; never overwrite it.
+                    if ("FC_END" in _confirmedTypes.value) return@launch
                     _fcEndMs.value = now
                     _fcEndElapsedMs.value = _sessionTimerMs.value
                     if (currentSessionId >= 0) repository.updateFirstCrackEnd(currentSessionId, now, event.durationMs)
@@ -136,6 +138,7 @@ class RoastViewModel @Inject constructor(
                 }
                 is CrackEvent.SecondCrackStarted -> {
                     autoScMs = now
+                    if ("SC_START" in _confirmedTypes.value) return@launch
                     _scDetectedMs.value = now
                     _scElapsedMs.value = _sessionTimerMs.value
                     if (currentSessionId >= 0) repository.updateSecondCrack(currentSessionId, now)
@@ -384,13 +387,15 @@ class RoastViewModel @Inject constructor(
                         _scElapsedMs.value = null
                         repository.updateFirstCrackStart(sessionId, confirmedMs)
                     }
-                    "FC_END" -> if (_fcEndMs.value == null) {
+                    // Manual marks always win over the detector's (e.g. an auto FC end
+                    // fired 25 s after a manual FC start used to swallow the real tap).
+                    "FC_END" -> {
                         _fcEndMs.value = confirmedMs
                         _fcEndElapsedMs.value = elapsedMs
                         val dur = confirmedMs - (_fcStartMs.value ?: confirmedMs)
                         repository.updateFirstCrackEnd(sessionId, confirmedMs, dur)
                     }
-                    "SC_START" -> if (_scDetectedMs.value == null) {
+                    "SC_START" -> {
                         _scDetectedMs.value = confirmedMs
                         _scElapsedMs.value = elapsedMs
                         repository.updateSecondCrack(sessionId, confirmedMs)
