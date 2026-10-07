@@ -67,6 +67,19 @@ class RollDetectorTest {
     }
 
     @Test
+    fun manualFcOnSilentRollNeverAutoEnds() {
+        // 2026-10-07 roast: soft recording, owner tapped FC, the pop rate never rose above
+        // baseline and "25 s of quiet" ended FC 25 s after the tap. FC end must need a roll.
+        val d = RollDetector()
+        val events = ArrayList<RollDetector.Event>()
+        for (i in 0 until 20 * 600) {
+            if (i == 20 * 300) d.forceFirstCrack()
+            d.push(if (i % 200 == 0) 5f else 1f)?.let { events += it }
+        }
+        assertTrue("got $events", RollDetector.Event.FIRST_CRACK_END !in events)
+    }
+
+    @Test
     fun steadyNoiseNeverFires() {
         // A constant sprinkling of pops (bean rattle) at any rate is the baseline, not a crack.
         val imp = FloatArray(20 * 60 * 15) { if (it % 7 == 0) 5f else 1f }

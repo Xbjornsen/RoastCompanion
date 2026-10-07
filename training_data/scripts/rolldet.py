@@ -24,7 +24,7 @@ class RollDetector:
         self.p = p; self.min_fc_s = min_fc_s
         self.n = 0; self.pops = []           # frame indices of pops (pruned to the longest window)
         self.r_fc = []; self.r_sc = []        # per-second rates
-        self.phase = "MON"; self.streak = 0; self.fc_s = None; self.base_fc = 0.0; self.quiet = 0
+        self.phase = "MON"; self.streak = 0; self.fc_s = None; self.base_fc = 0.0; self.quiet = 0; self.armed = False
         self.events = {}
     def _count(self, win_s):
         lo = self.n - win_s * FPS              # pops in frames (n - win*FPS, n]
@@ -44,7 +44,7 @@ class RollDetector:
     def _baseline(self, R, lo, hi):
         return float(np.median(R[lo:hi]))
     def _enter_fc(self, s):
-        p = self.p; self.phase = "FC"; self.fc_s = s; self.streak = 0; self.quiet = 0
+        p = self.p; self.phase = "FC"; self.fc_s = s; self.streak = 0; self.quiet = 0; self.armed = False
         lo = max(0, s - p["fc_base_span_s"]); hi = s - p["fc_base_gap_s"]
         self.base_fc = self._baseline(self.r_fc, lo, hi) if hi > lo else (self.r_fc[-1] if self.r_fc else 0.0)
     def _second(self, s):
@@ -63,8 +63,11 @@ class RollDetector:
             return
         # FC active / complete: FC-end (informational) and SC
         if self.phase == "FC":
-            if R[s] < max(1.2 * self.base_fc, self.base_fc + 5): self.quiet += 1
-            else: self.quiet = 0
+            # FC end = the roll died down. Only count quiet once the roll was actually heard
+            # above baseline: after a manual tap on a soft recording the rate may never rise,
+            # and "25 s of quiet" then fired FC end ~25 s after the tap (2026-10-07 roast).
+            if R[s] >= max(1.2 * self.base_fc, self.base_fc + 5): self.armed = True; self.quiet = 0
+            elif self.armed: self.quiet += 1
             if self.quiet >= p["fc_end_quiet_s"]:
                 self.events["FC_END"] = s * 1000.0; self.phase = "FCC"
         if s < self.fc_s + p["sc_after_s"]: return
